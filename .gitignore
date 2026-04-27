@@ -1,0 +1,7 @@
+# Dependencias
+node_modules/
+/mobile/node_modules/
+/server/node_modules/
+
+# Entorno
+.env
