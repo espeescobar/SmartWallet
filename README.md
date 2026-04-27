@@ -24,18 +24,18 @@ Sigue estos pasos para levantar el entorno de desarrollo local:
 * [Expo Go](https://expo.dev/client) instalado en un dispositivo móvil.
 
 ### 2. Levantar el Backend (Servidor)
-```bash
+`bash
 cd Backend
 npm install
-npm run dev ```
+npm run dev `
 
 El servidor estará disponible en http://localhost:3000.
 
 ### 3. Levantar el Frontend (App Móvil)
-```Bash
+`Bash
 cd mobile
 npm install
-npx expo start -c ```
+npx expo start -c `
 Escanea el código QR generado con la aplicación Expo Go en tu celular.
 
 ## ⚙️ Estándares Técnicos y Calidad
