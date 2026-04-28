@@ -1,0 +1,35 @@
+import React from 'react';
+import { View, Text } from 'react-native';
+import { styles } from '../styles/Objetivos.styles';
+
+interface ObjetivosProps {
+    title: string;
+    actual: number;
+    total: number;
+}
+
+export default function Objetivos({ title, actual, total }: ObjetivosProps) {
+    const percent = Math.min(Math.round((actual / total) * 100), 100);
+
+    const getProgressColor = () => {
+        if (percent < 30) return '#6E6E73'; 
+        if (percent < 80) return '#3366FF'; 
+        return '#00E58D'; 
+    };
+
+    return (
+        <View style={styles.card}>
+            <View style={styles.header}>
+                <Text style={styles.title}>{title}</Text>
+                <Text style={[styles.percentage, { color: getProgressColor() }]}>{percent}%</Text>
+            </View>
+            <View style={styles.progressBg}>
+                <View style={[styles.progressFill, { width: `${percent}%`, backgroundColor: getProgressColor() }]} />
+            </View>
+            <View style={styles.footer}>
+                <Text style={styles.amountText}>${actual.toLocaleString('es-CL')}</Text>
+                <Text style={styles.amountText}>Meta: ${total.toLocaleString('es-CL')}</Text>
+            </View>
+        </View>
+    );
+}
