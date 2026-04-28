@@ -12,7 +12,7 @@ export default function ObjetivosScreen() {
     return (
         <SafeAreaView style={styles.safeArea}>
             <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-                <Text style={styles.screenTitle}>Tus Objetivos</Text>
+                <Text style={styles.screenTitle}>Tus Objetivos de Ahorro</Text>
                 <Text style={styles.subtitle}>Sigue ahorrando, vas súper bien</Text>
                 
                 {misObjetivos.map(obj => (

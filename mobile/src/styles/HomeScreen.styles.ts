@@ -1,9 +1,10 @@
 import { StyleSheet } from 'react-native';
+import { Colors, Typography } from './App.styles';
 
 export const styles = StyleSheet.create({
     safeArea: { 
         flex: 1, 
-        backgroundColor: '#F7F7F9' 
+        backgroundColor: Colors.blanco 
     },
     container: { 
         flex: 1, 
@@ -15,38 +16,42 @@ export const styles = StyleSheet.create({
     },
     greeting: { 
         fontSize: 22, 
+        fontFamily: Typography.bold,
         fontWeight: '600', 
-        color: '#1A1A1A' 
+        color: Colors.negro 
     },
     balanceContainer: { 
         marginBottom: 40 
     },
     balanceTitle: { 
-        color: '#6E6E73', 
+        color: Colors.textoSuave, 
+        fontFamily: Typography.main,
         fontSize: 16, 
         fontWeight: '500', 
         marginBottom: 8 
     },
     balanceAmount: { 
-        color: '#1A1A1A', 
+        color: Colors.negro, 
+        fontFamily: Typography.header,
         fontSize: 48, 
         fontWeight: '800', 
         letterSpacing: -1 
     },
     sectionTitle: { 
         fontSize: 18, 
+        fontFamily: Typography.bold,
         fontWeight: '700', 
-        color: '#1A1A1A', 
+        color: Colors.negro, 
         marginBottom: 16,
         marginTop: 10
     },
-    // Estilos para los movimientos
     movementsContainer: {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: Colors.fondo,
         borderRadius: 24,
         paddingHorizontal: 16,
-        paddingVertical: 8,
         marginBottom: 20,
+        borderWidth: 1,
+        borderColor: Colors.borde
     },
     expenseItem: {
         flexDirection: 'row',
@@ -54,40 +59,44 @@ export const styles = StyleSheet.create({
         alignItems: 'center',
         paddingVertical: 16,
         borderBottomWidth: 1,
-        borderBottomColor: '#F0F0F2',
+        borderBottomColor: Colors.borde,
     },
     expenseLeft: {
         flexDirection: 'row',
         alignItems: 'center',
+        flex: 1,
     },
     iconCircle: {
         width: 40,
         height: 40,
         borderRadius: 20,
-        backgroundColor: '#F7F7F9',
+        backgroundColor: Colors.fondo,
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: 12,
+        marginRight: -30,
     },
     iconText: {
         fontSize: 18,
     },
     expenseDescription: {
         fontSize: 15,
+        fontFamily: Typography.bold,
         fontWeight: '600',
-        color: '#1A1A1A',
+        color: Colors.negro,
     },
     expenseDate: {
         fontSize: 12,
-        color: '#6E6E73',
+        fontFamily: Typography.main,
+        color: Colors.textoSuave,
         marginTop: 2,
     },
     expenseAmount: {
         fontSize: 15,
+        fontFamily: Typography.bold,
         fontWeight: '700',
-        color: '#1A1A1A',
+        color: Colors.negro,
     },
     bottomPadding: { 
-        height: 40 
+        height: 10 
     }
 });

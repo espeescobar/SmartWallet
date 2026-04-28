@@ -1,11 +1,42 @@
 import { StyleSheet } from 'react-native';
-export const styles = StyleSheet.create({
-    safeArea: { flex: 1, backgroundColor: '#F7F7F9' },
-    container: { flex: 1, paddingHorizontal: 24 },
-    screenTitle: { fontSize: 28, fontWeight: '800', color: '#1A1A1A', marginTop: 20 },
-    subtitle: { fontSize: 16, color: '#6E6E73', marginBottom: 30, marginTop: 4 },
-    addButton: { backgroundColor: '#1A1A1A', height: 56, borderRadius: 16, justifyContent: 'center', alignItems: 'center', marginTop: 10, marginBottom: 40 },
-    addButtonText: { color: '#FFFFFF', fontWeight: '700', fontSize: 16 }
-    
+import { Colors, Typography } from './App.styles';
 
+export const styles = StyleSheet.create({
+    safeArea: { 
+        flex: 1, 
+        backgroundColor: Colors.blanco
+    },
+    container: { 
+        flex: 1, 
+        paddingHorizontal: 24 
+    },
+    screenTitle: { 
+        fontSize: 28, 
+        fontFamily: Typography.header,
+        fontWeight: '800', 
+        color: Colors.negro, 
+        marginTop: 20 
+    },
+    subtitle: { 
+        fontSize: 16, 
+        fontFamily: Typography.main,
+        color: Colors.textoSuave, 
+        marginBottom: 30, 
+        marginTop: 4 
+    },
+    addButton: { 
+        backgroundColor: Colors.azul, 
+        height: 56, 
+        borderRadius: 16, 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        marginTop: 10, 
+        marginBottom: 40 
+    },
+    addButtonText: { 
+        color: Colors.blanco, 
+        fontFamily: Typography.bold,
+        fontWeight: '700', 
+        fontSize: 16 
+    }
 });

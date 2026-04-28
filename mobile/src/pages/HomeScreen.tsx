@@ -36,7 +36,7 @@ export default function HomeScreen() {
                         <View key={gasto.id} style={styles.expenseItem}>
                             <View style={styles.expenseLeft}>
                                 <View style={styles.iconCircle}>
-                                    <Text style={styles.iconText}>💸</Text>
+                                    <Text style={styles.iconText}></Text>
                                 </View>
                                 <View>
                                     <Text style={styles.expenseDescription}>{gasto.description}</Text>

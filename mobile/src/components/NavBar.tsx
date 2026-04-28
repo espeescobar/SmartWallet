@@ -4,6 +4,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import HomeScreen from '../pages/HomeScreen';
 import DashboardScreen from '../pages/DashboardScreen';
 import ObjetivosScreen from '../pages/ObjetivosScreen';
+import { Colors, Typography } from '../styles/App.styles';
 
 const Tab = createBottomTabNavigator();
 
@@ -14,34 +15,36 @@ export default function NavBar() {
         screenOptions={{
           headerShown: false,
 
-          tabBarActiveTintColor: '#FFFFFF', 
+          tabBarActiveTintColor: Colors.negro, 
 
-          tabBarInactiveTintColor: '#8E8E93', 
+          tabBarInactiveTintColor: Colors.textoSuave, 
           tabBarStyle: { 
-            backgroundColor: '#1A1A1A', 
-            height: 80, 
-            paddingBottom: 0, 
-            paddingTop: 0,
-            borderTopWidth: 0, 
-            elevation: 0 
+            backgroundColor: Colors.blanco, 
+            height: 70, 
+            paddingTop: 20,
+            borderTopWidth: 1, 
           },
 
           tabBarLabelStyle: {
-            fontSize: 15,
-            fontWeight: '600'
-          }
+            fontSize: 13,
+            fontWeight: '600',
+            fontFamily: Typography.main
+          },
+
+          tabBarIconStyle: { display: 'none' },
+          tabBarItemStyle: { justifyContent: 'center' } 
         }}
       >
         
         <Tab.Screen 
-          name="Objetivos" 
-          component={ObjetivosScreen} 
-          options={{ tabBarLabel: 'Objetivos' }} 
-        />
-        <Tab.Screen 
           name="Inicio" 
           component={HomeScreen} 
           options={{ tabBarLabel: 'Inicio' }} 
+        />
+        <Tab.Screen 
+          name="Objetivos" 
+          component={ObjetivosScreen} 
+          options={{ tabBarLabel: 'Objetivos' }} 
         />
         <Tab.Screen 
           name="DashboardScreen" 

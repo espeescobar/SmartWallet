@@ -13,8 +13,8 @@ export default function Objetivos({ title, actual, total }: ObjetivosProps) {
 
     const getProgressColor = () => {
         if (percent < 30) return '#6E6E73'; 
-        if (percent < 80) return '#3366FF'; 
-        return '#00E58D'; 
+        if (percent < 80) return '#7ea4d9'; 
+        return '#005AD6'; 
     };
 
     return (
