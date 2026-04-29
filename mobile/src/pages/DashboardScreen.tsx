@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { View, Text, ScrollView, SafeAreaView } from 'react-native';
 import { styles } from '../styles/DashboardScreen.styles';
-import TarjetaCategoria from '../components/TarjetaCategoria'; // <-- Importamos el componente
+import { styles_app } from '../styles/App.styles';
+import TarjetaCategoria from '../components/TarjetaCategoria'; 
 
 export default function DashboardScreen() {
     const [categoriaExpandida, setCategoriaExpandida] = useState<string | null>(null);
@@ -37,20 +38,19 @@ export default function DashboardScreen() {
     };
 
     return (
-        <SafeAreaView style={styles.safeArea}>
-            <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+        <SafeAreaView style={styles_app.safeArea}>
+            <ScrollView style={styles_app.container} showsVerticalScrollIndicator={false}>
                 
-                <Text style={styles.screenTitle}>Tus Gastos</Text>
-                <Text style={styles.subtitle}>Resumen de este mes</Text>
+                <Text style={styles_app.screenTitle}>Tus Gastos</Text>
+                <Text style={styles_app.subtitle}>Resumen de este mes</Text>
 
                 <View style={styles.totalCard}>
                     <Text style={styles.totalTitle}>Total Gastado</Text>
                     <Text style={styles.totalAmount}>${gastosMes.toLocaleString('es-CL')}</Text>
                 </View>
 
-                <Text style={styles.sectionTitle}>¿En qué se te fue la plata?</Text>
-                
-                {/* --- AQUÍ USAMOS EL COMPONENTE LIMPIO --- */}
+                <Text style={styles_app.sectionTitle}>¿En qué se te fue la plata?</Text>
+            
                 {resumenCategorias.map((cat) => {
                     const porcentaje = (cat.monto / gastosMes) * 100;
                     const estaAbierta = categoriaExpandida === cat.id;

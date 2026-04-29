@@ -2,28 +2,6 @@ import { StyleSheet } from 'react-native';
 import { Colors, Typography } from './App.styles'; 
 
 export const styles = StyleSheet.create({
-    safeArea: { 
-        flex: 1, 
-        backgroundColor: Colors.blanco 
-    },
-    container: { 
-        flex: 1, 
-        paddingHorizontal: 24 
-    },
-    screenTitle: { 
-        fontSize: 28, 
-        fontFamily: Typography.header, 
-        fontWeight: '800', 
-        color: Colors.negro, 
-        marginTop: 20 
-    },
-    subtitle: { 
-        fontSize: 16, 
-        fontFamily: Typography.main,
-        color: Colors.textoSuave,   
-        marginBottom: 30, 
-        marginTop: 4 
-    },
   
     totalCard: {
         backgroundColor: Colors.fondo,
@@ -41,17 +19,10 @@ export const styles = StyleSheet.create({
     },
     totalAmount: {
         color: Colors.azul,         
-        fontFamily: Typography.header, 
+        fontFamily: Typography.main, 
         fontSize: 40,
         fontWeight: '800',
         letterSpacing: -1,
-    },
-    sectionTitle: { 
-        fontSize: 18, 
-        fontFamily: Typography.bold,  
-        fontWeight: '700', 
-        color: Colors.negro,          
-        marginBottom: 16 
     },
 
     categoryContainer: {
@@ -62,20 +33,15 @@ export const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: Colors.borde,
     },
-    categoryHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginBottom: 12,
-    },
     categoryName: {
         fontSize: 16,
-        fontFamily: Typography.bold,
+        fontFamily: Typography.main,
         fontWeight: '600',
         color: Colors.negro, 
     },
     categoryAmount: {
         fontSize: 16,
-        fontFamily: Typography.bold,
+        fontFamily: Typography.main,
         fontWeight: '700',
         color: Colors.negro, 
     },
@@ -96,17 +62,12 @@ export const styles = StyleSheet.create({
         marginTop: 16,
         paddingTop: 16,
         borderTopWidth: 1,
-        borderTopColor: Colors.borde, // O '#F0F0F2' si no estás usando Colors.borde aquí
+        borderTopColor: Colors.borde,
     },
-    gastoItem: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 12,
-    },
+  
     gastoDescripcion: {
         fontSize: 14,
-        fontFamily: Typography.bold, // Si no usas Typography, pon fontWeight: '600'
+        fontFamily: Typography.main,
         color: Colors.negro,
     },
     gastoFecha: {
@@ -114,10 +75,5 @@ export const styles = StyleSheet.create({
         fontFamily: Typography.main,
         color: Colors.textoSuave,
         marginTop: 2,
-    },
-    gastoMonto: {
-        fontSize: 14,
-        fontFamily: Typography.bold,
-        color: Colors.negro,
     }
 });

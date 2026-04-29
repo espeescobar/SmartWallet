@@ -1,8 +1,9 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
-import { styles } from '../styles/DashboardScreen.styles'; // Importamos los mismos estilos
+import { styles } from '../styles/DashboardScreen.styles'; 
+import { styles_app } from '../styles/App.styles';
 
-// Definimos la estructura de los datos que recibirá
+
 interface Gasto {
     id: string;
     descripcion: string;
@@ -30,7 +31,7 @@ export default function TarjetaCategoria({ cat, porcentaje, estaAbierta, alPresi
             activeOpacity={0.8}
             onPress={alPresionar}
         >
-            <View style={styles.categoryHeader}>
+            <View style={styles_app.rowBetween}>
                 <Text style={styles.categoryName}>{cat.nombre}</Text>
                 <Text style={styles.categoryAmount}>${cat.monto.toLocaleString('es-CL')}</Text>
             </View>
@@ -44,16 +45,15 @@ export default function TarjetaCategoria({ cat, porcentaje, estaAbierta, alPresi
                 />
             </View>
 
-            {/* --- SECCIÓN DESPLEGABLE --- */}
             {estaAbierta && (
                 <View style={styles.expandedList}>
                     {cat.gastos.map((gasto) => (
-                        <View key={gasto.id} style={styles.gastoItem}>
+                        <View key={gasto.id} style={styles_app.rowBetween}>
                             <View>
                                 <Text style={styles.gastoDescripcion}>{gasto.descripcion}</Text>
                                 <Text style={styles.gastoFecha}>{gasto.fecha}</Text>
                             </View>
-                            <Text style={styles.gastoMonto}>${gasto.monto.toLocaleString('es-CL')}</Text>
+                            <Text style={styles.gastoDescripcion}>${gasto.monto.toLocaleString('es-CL')}</Text>
                         </View>
                     ))}
                 </View>

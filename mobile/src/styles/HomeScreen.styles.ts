@@ -2,21 +2,13 @@ import { StyleSheet } from 'react-native';
 import { Colors, Typography } from './App.styles';
 
 export const styles = StyleSheet.create({
-    safeArea: { 
-        flex: 1, 
-        backgroundColor: Colors.blanco 
-    },
-    container: { 
-        flex: 1, 
-        paddingHorizontal: 24 
-    },
     header: { 
         marginTop: 20, 
         marginBottom: 30 
     },
     greeting: { 
         fontSize: 22, 
-        fontFamily: Typography.bold,
+        fontFamily: Typography.main,
         fontWeight: '600', 
         color: Colors.negro 
     },
@@ -32,18 +24,10 @@ export const styles = StyleSheet.create({
     },
     balanceAmount: { 
         color: Colors.negro, 
-        fontFamily: Typography.header,
+        fontFamily: Typography.main,
         fontSize: 48, 
         fontWeight: '800', 
         letterSpacing: -1 
-    },
-    sectionTitle: { 
-        fontSize: 18, 
-        fontFamily: Typography.bold,
-        fontWeight: '700', 
-        color: Colors.negro, 
-        marginBottom: 16,
-        marginTop: 10
     },
     movementsContainer: {
         backgroundColor: Colors.fondo,
@@ -57,7 +41,7 @@ export const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingVertical: 16,
+        paddingVertical: 10,
         borderBottomWidth: 1,
         borderBottomColor: Colors.borde,
     },
@@ -80,7 +64,7 @@ export const styles = StyleSheet.create({
     },
     expenseDescription: {
         fontSize: 15,
-        fontFamily: Typography.bold,
+        fontFamily: Typography.main,
         fontWeight: '600',
         color: Colors.negro,
     },
@@ -92,7 +76,7 @@ export const styles = StyleSheet.create({
     },
     expenseAmount: {
         fontSize: 15,
-        fontFamily: Typography.bold,
+        fontFamily: Typography.main,
         fontWeight: '700',
         color: Colors.negro,
     },

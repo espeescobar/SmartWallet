@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text } from 'react-native';
 import { styles } from '../styles/Objetivos.styles';
+import { styles_app } from '../styles/App.styles';
 
 interface ObjetivosProps {
     title: string;
@@ -18,8 +19,8 @@ export default function Objetivos({ title, actual, total }: ObjetivosProps) {
     };
 
     return (
-        <View style={styles.card}>
-            <View style={styles.header}>
+        <View style={styles_app.card}>
+            <View style={styles_app.rowBetween}>
                 <Text style={styles.title}>{title}</Text>
                 <Text style={[styles.percentage, { color: getProgressColor() }]}>{percent}%</Text>
             </View>

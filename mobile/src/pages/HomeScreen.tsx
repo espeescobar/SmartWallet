@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, ScrollView, SafeAreaView } from 'react-native';
 import { styles } from '../styles/HomeScreen.styles';
 import FormGastos from '../components/FormGastos';
+import { styles_app } from '../styles/App.styles';
 
 export default function HomeScreen() {
     const saldoDisponible = 150000;
@@ -15,8 +16,8 @@ export default function HomeScreen() {
     ];
 
     return (
-        <SafeAreaView style={styles.safeArea}>
-            <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+        <SafeAreaView style={styles_app.safeArea}>
+            <ScrollView style={styles_app.container} showsVerticalScrollIndicator={false}>
                 <View style={styles.header}>
                     <Text style={styles.greeting}>Hola, Diego 👋</Text>
                 </View>
@@ -26,11 +27,11 @@ export default function HomeScreen() {
                     <Text style={styles.balanceAmount}>${saldoDisponible.toLocaleString('es-CL')}</Text>
                 </View>
 
-                <Text style={styles.sectionTitle}>Anotar un gasto</Text>
+                <Text style={styles_app.sectionTitle}>Anotar un gasto</Text>
                 <FormGastos />
 
-                {/* --- NUEVA SECCIÓN DE GASTOS RECIENTES --- */}
-                <Text style={styles.sectionTitle}>Movimientos recientes</Text>
+        
+                <Text style={styles_app.sectionTitle}>Movimientos recientes</Text>
                 <View style={styles.movementsContainer}>
                     {gastosRecientes.map((gasto) => (
                         <View key={gasto.id} style={styles.expenseItem}>

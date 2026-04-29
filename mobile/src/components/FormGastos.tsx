@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Modal, FlatList, Alert } from 'react-native';
 import { styles } from '../styles/FormGastos.styles';
+import { styles_app } from '../styles/App.styles';
 
 const CATEGORIAS = [
     { id: '1', label: '🍔 Comida y Antojos' },
@@ -26,9 +27,9 @@ export default function FormGastos() {
     };
 
     return (
-        <View style={styles.card}>
+        <View style={styles_app.card}>
             <TextInput
-                style={styles.input}
+                style={styles_app.input}
                 placeholder="$0"
                 keyboardType="numeric"
                 value={amount}
@@ -42,8 +43,8 @@ export default function FormGastos() {
                 </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.button} onPress={handleSubmit}>
-                <Text style={styles.buttonText}>Guardar</Text>
+            <TouchableOpacity style={styles_app.button} onPress={handleSubmit}>
+                <Text style={styles_app.buttonText}>Guardar</Text>
             </TouchableOpacity>
 
             <Modal visible={modalVisible} animationType="slide" transparent={true}>

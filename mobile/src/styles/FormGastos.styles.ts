@@ -2,33 +2,13 @@ import { StyleSheet } from 'react-native';
 import { Colors, Typography } from './App.styles'; 
 
 export const styles = StyleSheet.create({
-    card: { 
-        backgroundColor: Colors.blanco, 
-        padding: 20, 
-        borderRadius: 24, 
-        marginBottom: 30, 
-        borderWidth: 1,
-        borderColor: Colors.borde, 
-        shadowColor: Colors.negro,
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 10,
-        elevation: 2 
-    },
-    input: { 
-        backgroundColor: Colors.fondo, 
-        height: 56, 
-        borderRadius: 16, 
-        paddingHorizontal: 16, 
-        fontSize: 16, 
-        fontFamily: Typography.main, 
-        color: Colors.negro,
-        marginBottom: 12 
-    },
+    
     categorySelector: { 
         backgroundColor: Colors.fondo, 
         height: 56, 
         borderRadius: 16, 
+        borderWidth: 1,
+        borderColor: Colors.borde,
         paddingHorizontal: 16, 
         justifyContent: 'center', 
         marginBottom: 12 
@@ -42,20 +22,6 @@ export const styles = StyleSheet.create({
         fontSize: 16, 
         fontFamily: Typography.main, 
         color: Colors.textoSuave 
-    },
-    button: { 
-        backgroundColor: Colors.azul, 
-        height: 56, 
-        borderRadius: 16, 
-        justifyContent: 'center', 
-        alignItems: 'center',
-        marginTop: 8
-    },
-    buttonText: { 
-        color: Colors.blanco, 
-        fontFamily: Typography.main,
-        fontWeight: '700', 
-        fontSize: 16 
     },
     modalOverlay: { 
         flex: 1, 
@@ -71,7 +37,7 @@ export const styles = StyleSheet.create({
     },
     modalTitle: { 
         fontSize: 20, 
-        fontFamily: Typography.bold,
+        fontFamily: Typography.main,
         fontWeight: '700', 
         color: Colors.negro, 
         marginBottom: 20, 

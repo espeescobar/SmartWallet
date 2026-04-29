@@ -1,7 +1,7 @@
 import React from 'react';
 import { ScrollView, Text, SafeAreaView, TouchableOpacity } from 'react-native';
 import Objetivos from '../components/Objetivos';
-import { styles } from '../styles/ObjetivosScreen.styles';
+import { styles_app } from '../styles/App.styles';
 
 export default function ObjetivosScreen() {
     const misObjetivos = [
@@ -10,17 +10,17 @@ export default function ObjetivosScreen() {
     ];
 
     return (
-        <SafeAreaView style={styles.safeArea}>
-            <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-                <Text style={styles.screenTitle}>Tus Objetivos de Ahorro</Text>
-                <Text style={styles.subtitle}>Sigue ahorrando, vas súper bien</Text>
+        <SafeAreaView style={styles_app.safeArea}>
+            <ScrollView style={styles_app.container} showsVerticalScrollIndicator={false}>
+                <Text style={styles_app.screenTitle}>Tus Objetivos de Ahorro</Text>
+                <Text style={styles_app.subtitle}>Sigue ahorrando, vas súper bien</Text>
                 
                 {misObjetivos.map(obj => (
                     <Objetivos key={obj.id} title={obj.title} actual={obj.actual} total={obj.total} />
                 ))}
 
-                <TouchableOpacity style={styles.addButton}>
-                    <Text style={styles.addButtonText}>+ Crear nuevo objetivo</Text>
+                <TouchableOpacity style={styles_app.button}>
+                    <Text style={styles_app.buttonText}>+ Crear nuevo objetivo</Text>
                 </TouchableOpacity>
             </ScrollView>
         </SafeAreaView>
