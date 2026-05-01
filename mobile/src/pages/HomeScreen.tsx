@@ -3,6 +3,7 @@ import { View, Text, ScrollView, SafeAreaView } from 'react-native';
 import { styles } from '../styles/HomeScreen.styles';
 import FormGastos from '../components/FormGastos';
 import { styles_app } from '../styles/App.styles';
+import NavBar from '../components/NavBar';
 
 export default function HomeScreen() {
     const saldoDisponible = 150000;
@@ -51,6 +52,7 @@ export default function HomeScreen() {
                 
                 <View style={styles.bottomPadding} />
             </ScrollView>
+        
         </SafeAreaView>
     );
 }

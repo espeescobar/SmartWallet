@@ -1,16 +1,21 @@
-import React from 'react';
-import { useCallback } from 'react';
-import * as SplashScreen from 'expo-splash-screen';
-import { useFonts, Inter_400Regular} from '@expo-google-fonts/inter';
-import NavBar from './src/components/NavBar';
+import React, { useCallback } from 'react';
 import { View } from 'react-native';
+import * as SplashScreen from 'expo-splash-screen';
+import { useFonts, Inter_400Regular } from '@expo-google-fonts/inter';
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
+
+import LoginScreen from './src/pages/LoginScreen';
+import NavBar from './src/components/NavBar'; 
 
 SplashScreen.preventAutoHideAsync();
 
+const Stack = createNativeStackNavigator();
+
 export default function App() {
   const [fontsLoaded] = useFonts({
-    'Inter-Regular': Inter_400Regular 
+    'Inter-Regular': Inter_400Regular,
   });
 
   const onLayoutRootView = useCallback(async () => {
@@ -19,13 +24,25 @@ export default function App() {
     }
   }, [fontsLoaded]);
 
-  if (!fontsLoaded) {
-    return null;
-  }
+  if (!fontsLoaded) return null;
 
   return (
     <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
-      <NavBar />
+      <NavigationContainer>
+        <Stack.Navigator initialRouteName="Login">
+          <Stack.Screen 
+            name="Login" 
+            component={LoginScreen} 
+            options={{ headerShown: false }} 
+          />
+         
+          <Stack.Screen 
+            name="MainTabs" 
+            component={NavBar} 
+            options={{ headerShown: false }} 
+          />
+        </Stack.Navigator>
+      </NavigationContainer>
     </View>
   );
 }

@@ -1,8 +1,7 @@
 import { StyleSheet } from 'react-native';
 
 
-export const Colors = {
-    pistacho: '#00E58D',    
+export const Colors = {   
     negro: '#1A1A1A',       
     fondo: '#F3F6FA',       
     blanco: '#FFFFFF',      
@@ -70,7 +69,7 @@ export const styles_app = StyleSheet.create({
         alignItems: 'center',
         marginBottom: 12
     },
-    
+
     // botones principales
     buttonText: { 
         color: Colors.blanco, 
