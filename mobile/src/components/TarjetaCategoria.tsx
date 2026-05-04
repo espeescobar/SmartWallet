@@ -1,8 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { styles } from '../styles/DashboardScreen.styles'; 
-import { styles_app } from '../styles/App.styles';
-
+import { Colors, styles_app } from '../styles/App.styles';
 
 interface Gasto {
     id: string;
@@ -25,6 +24,14 @@ interface TarjetaCategoriaProps {
 }
 
 export default function TarjetaCategoria({ cat, porcentaje, estaAbierta, alPresionar }: TarjetaCategoriaProps) {
+    
+    const getBarColor = (percent: number) => {
+        if (percent >= 75) return Colors.azul; 
+        if (percent >= 40) return Colors.celeste; 
+        if (percent >= 15) return Colors.textoSuave; 
+        return Colors.textoSuave;
+    };
+
     return (
         <TouchableOpacity 
             style={styles.categoryContainer}
@@ -40,7 +47,11 @@ export default function TarjetaCategoria({ cat, porcentaje, estaAbierta, alPresi
                 <View 
                     style={[
                         styles.progressBarFill, 
-                        { width: `${porcentaje}%`, backgroundColor: cat.color }
+                        { 
+                            width: `${porcentaje}%`, 
+                            // Reemplazamos cat.color por nuestra función dinámica
+                            backgroundColor: getBarColor(porcentaje) 
+                        }
                     ]} 
                 />
             </View>

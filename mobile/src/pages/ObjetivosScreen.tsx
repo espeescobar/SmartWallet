@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { ScrollView, Text, SafeAreaView, TouchableOpacity, Alert, ActivityIndicator, RefreshControl, TextInput, Modal, View } from 'react-native';
+import { ScrollView, Text, SafeAreaView, TouchableOpacity, Alert, ActivityIndicator, RefreshControl, TextInput, Modal, View, Platform } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import Objetivos from '../components/Objetivos';
 import { api } from '../services/api';
-
 import { styles_app } from '../styles/App.styles';
-import { styles_objetivos as styles } from '../styles/ObjetivosScreen.styles'; 
+import { styles_objetivos as styles } from '../styles/ObjetivosScreen.styles';
+import { parsePositiveAmount } from '../utils/validation';
 
 interface Goal {
   id: string;
@@ -16,18 +17,18 @@ interface Goal {
 }
 
 export default function ObjetivosScreen() {
-  const [goals, setGoals]           = useState<Goal[]>([]);
-  const [loading, setLoading]       = useState(true);
+  const [goals, setGoals] = useState<Goal[]>([]);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
-  
-  const [newTitle, setNewTitle]     = useState('');
-  const [newAmount, setNewAmount]   = useState('');
-  const [saving, setSaving]         = useState(false);
-  
-  // Ahora usamos un string simple para la fecha
-  const [deadlineText, setDeadlineText] = useState('');
-  const [monthlyAmount, setMonthlyAmount] = useState<string>(''); 
+
+  const [newTitle, setNewTitle] = useState('');
+  const [newAmount, setNewAmount] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [deadline, setDeadline] = useState(new Date(Date.now() + 365 * 24 * 60 * 60 * 1000));
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [monthlyAmount, setMonthlyAmount] = useState('');
+  const [monthlyEdited, setMonthlyEdited] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -45,89 +46,94 @@ export default function ObjetivosScreen() {
 
   const onRefresh = () => { setRefreshing(true); load(); };
 
-  // Efecto para calcular el monto mensual leyendo el texto DD/MM/AAAA
   useEffect(() => {
-    const target = parseInt(newAmount, 10);
-    const dateParts = deadlineText.split('/');
-    
-    // Solo calculamos si hay un monto válido y la fecha tiene 3 partes (DD, MM, AAAA)
-    if (!isNaN(target) && target > 0 && dateParts.length === 3) {
-      const day = parseInt(dateParts[0], 10);
-      const month = parseInt(dateParts[1], 10) - 1; // Los meses en JS empiezan en 0
-      const year = parseInt(dateParts[2], 10);
-      
-      const deadlineDate = new Date(year, month, day);
-      
-      // Verificamos que sea una fecha real
-      if (!isNaN(deadlineDate.getTime())) {
-        const now = new Date();
-        
-        let monthsDiff = (deadlineDate.getFullYear() - now.getFullYear()) * 12;
-        monthsDiff -= now.getMonth();
-        monthsDiff += deadlineDate.getMonth();
-
-        const monthsToSave = monthsDiff <= 0 ? 1 : monthsDiff;
-        const calculatedMonthly = Math.ceil(target / monthsToSave);
-        
-        setMonthlyAmount(calculatedMonthly.toString());
-        return;
-      }
+    if (monthlyEdited) return;
+    const target = parsePositiveAmount(newAmount);
+    if (!target) {
+      setMonthlyAmount('');
+      return;
     }
-    
-    // Si la fecha está incompleta o es inválida, limpiamos el monto mensual
-    setMonthlyAmount('');
-  }, [newAmount, deadlineText]);
+    const now = new Date();
+    let monthsDiff = (deadline.getFullYear() - now.getFullYear()) * 12;
+    monthsDiff -= now.getMonth();
+    monthsDiff += deadline.getMonth();
+    if (deadline.getDate() < now.getDate()) monthsDiff -= 1;
+    const monthsToSave = Math.max(monthsDiff, 1);
+    setMonthlyAmount(Math.ceil(target / monthsToSave).toString());
+  }, [newAmount, deadline, monthlyEdited]);
 
-  const handleCreate = async () => {
+  const resetModal = () => {
+    setModalVisible(false);
+    setNewTitle('');
+    setNewAmount('');
+    setDeadline(new Date(Date.now() + 365 * 24 * 60 * 60 * 1000));
+    setMonthlyAmount('');
+    setMonthlyEdited(false);
+  };
+
+  const calcularMesesRestantes = (): number => {
+    const now = new Date();
+    let monthsDiff = (deadline.getFullYear() - now.getFullYear()) * 12;
+    monthsDiff -= now.getMonth();
+    monthsDiff += deadline.getMonth();
+    if (deadline.getDate() < now.getDate()) monthsDiff -= 1;
+    return Math.max(monthsDiff, 1);
+  };
+
+  const guardarMeta = async () => {
     if (!newTitle.trim()) {
       Alert.alert('Falta el nombre', 'Dale un nombre a tu objetivo.');
       return;
     }
-  
-    const parsedTarget = parseInt(newAmount, 10);
-    if (isNaN(parsedTarget) || parsedTarget <= 0) {
-      Alert.alert('Monto inválido', 'Ingresa un monto meta mayor a 0.');
-      return;
-    }
-  
-    // Validación manual de la fecha
-    const dateParts = deadlineText.split('/');
-    if (dateParts.length !== 3) {
-      Alert.alert('Fecha inválida', 'Ingresa la fecha en formato DD/MM/AAAA (ej: 31/12/2026).');
+
+    const parsedTarget = parsePositiveAmount(newAmount);
+    if (parsedTarget === null || parsedTarget <= 0) {
+      Alert.alert('Monto inválido', 'Ingresa un monto válido');
       return;
     }
 
-    const deadlineDate = new Date(
-      parseInt(dateParts[2], 10), 
-      parseInt(dateParts[1], 10) - 1, 
-      parseInt(dateParts[0], 10)
-    );
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    const fechaLimite = new Date(deadline);
+    fechaLimite.setHours(0, 0, 0, 0);
+    if (fechaLimite < hoy) {
+      Alert.alert('Fecha inválida', 'La fecha límite no puede ser en el pasado');
+      return;
+    }
 
-    if (isNaN(deadlineDate.getTime()) || deadlineDate < new Date()) {
-      Alert.alert('Fecha inválida', 'Asegúrate de ingresar una fecha válida a futuro.');
+    const parsedMonthly = parsePositiveAmount(monthlyAmount);
+    if (parsedMonthly === null || parsedMonthly <= 0) {
+      Alert.alert('Monto inválido', 'Ingresa un monto válido');
       return;
     }
-  
-    const parsedMonthly = parseInt(monthlyAmount, 10);
-    if (isNaN(parsedMonthly) || parsedMonthly <= 0) {
-      Alert.alert('Ahorro mensual inválido', 'El monto de ahorro mensual debe ser mayor a 0.');
+
+    const meses = calcularMesesRestantes();
+    const minimoNecesario = Math.ceil(parsedTarget / meses);
+    if (parsedMonthly < minimoNecesario) {
+      Alert.alert(
+        'Monto insuficiente',
+        'El monto asignado no permitirá alcanzar el objetivo ¿deseas continuar de todas formas?',
+        [
+          { text: 'Revisar', style: 'cancel' },
+          { text: 'Continuar', onPress: () => enviarMeta(parsedTarget, parsedMonthly) },
+        ]
+      );
       return;
     }
-  
+
+    await enviarMeta(parsedTarget, parsedMonthly);
+  };
+
+  const enviarMeta = async (parsedTarget: number, parsedMonthly: number) => {
     setSaving(true);
     try {
-      await api.post('/goals', { 
-        title: newTitle.trim(), 
-        target_amount: parsedTarget, 
-        deadline: deadlineDate.toISOString(),
-        monthly_contribution: parsedMonthly
+      await api.post('/goals', {
+        title: newTitle.trim(),
+        target_amount: parsedTarget,
+        deadline: deadline.toISOString(),
+        monthly_contribution: parsedMonthly,
       });
-      
-      setModalVisible(false);
-      setNewTitle('');
-      setNewAmount('');
-      setDeadlineText('');
-      setMonthlyAmount('');
+      resetModal();
       load();
     } catch (err: any) {
       Alert.alert('Error', err?.response?.data?.error ?? 'No se pudo crear el objetivo.');
@@ -136,6 +142,9 @@ export default function ObjetivosScreen() {
     }
   };
 
+  const formatDate = (date: Date) =>
+    date.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
   return (
     <SafeAreaView style={styles_app.safeArea}>
       <ScrollView
@@ -143,13 +152,13 @@ export default function ObjetivosScreen() {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        <Text style={styles_app.screenTitle}>Tus Objetivos de Ahorro</Text>
+        <Text style={styles_app.screenTitle}>Mis Metas</Text>
         <Text style={styles_app.subtitle}>Sigue ahorrando, vas súper bien</Text>
 
         {loading
           ? <ActivityIndicator style={styles.loadingIndicator} />
           : goals.length === 0
-            ? <Text style={styles.emptyText}>Aún no tienes objetivos. ¡Crea uno!</Text>
+            ? <Text style={styles.emptyText}>Aún no tienes metas. ¡Crea una!</Text>
             : goals.map((obj) => (
               <Objetivos
                 key={obj.id}
@@ -161,74 +170,78 @@ export default function ObjetivosScreen() {
         }
 
         <TouchableOpacity style={styles_app.button} onPress={() => setModalVisible(true)}>
-          <Text style={styles_app.buttonText}>+ Crear nuevo objetivo</Text>
+          <Text style={styles_app.buttonText}>+ Crear una nueva meta</Text>
         </TouchableOpacity>
       </ScrollView>
 
       <Modal visible={modalVisible} animationType="slide" transparent>
         <View style={styles_app.overlay}>
           <View style={styles_app.modalContainer}>
-            <Text style={styles_app.modalTitle}>Nuevo objetivo</Text>
-            
+            <Text style={styles_app.modalTitle}>Nueva meta de ahorro</Text>
+
+            <Text style={styles_app.label}>Nombre</Text>
             <TextInput
               style={styles_app.input}
-              placeholder="Nombre (ej: Viaje al sur)"
+              placeholder="Ej: Viaje al sur"
               placeholderTextColor="#A0A0A0"
               value={newTitle}
               onChangeText={setNewTitle}
             />
-            
+
+            <Text style={styles_app.label}>Meta de ahorro (CLP)</Text>
             <TextInput
               style={styles_app.input}
-              placeholder="Meta en CLP (ej: 500000)"
+              placeholder="Ej: 500000"
               placeholderTextColor="#A0A0A0"
               keyboardType="numeric"
               value={newAmount}
               onChangeText={setNewAmount}
             />
 
-         
+            <Text style={styles_app.label}>Fecha límite</Text>
+            <TouchableOpacity
+              style={styles_app.input}
+              onPress={() => setShowDatePicker(true)}
+            >
+              <Text style={{ fontSize: 16, color: '#1A1A1A' }}>{formatDate(deadline)}</Text>
+            </TouchableOpacity>
+
+            {showDatePicker && (
+              <DateTimePicker
+                value={deadline}
+                mode="date"
+                minimumDate={new Date()}
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={(_, selected) => {
+                  setShowDatePicker(Platform.OS === 'ios');
+                  if (selected) setDeadline(selected);
+                }}
+              />
+            )}
+
+            <Text style={styles.suggestionLabel}>Ahorro mensual sugerido (editable):</Text>
             <TextInput
               style={styles_app.input}
-              placeholder="Fecha límite (ej: 31/12/2026)"
+              placeholder="Monto mensual"
               placeholderTextColor="#A0A0A0"
-              keyboardType="numbers-and-punctuation"
-              value={deadlineText}
-              onChangeText={setDeadlineText}
-              maxLength={10} 
+              keyboardType="numeric"
+              value={monthlyAmount}
+              onChangeText={(v) => {
+                setMonthlyEdited(true);
+                setMonthlyAmount(v);
+              }}
             />
 
-            
-                <Text style={styles.suggestionLabel}>
-                  Ahorro mensual sugerido (puedes editarlo):
-                </Text>
-                <TextInput
-                  style={styles_app.input}
-                  placeholder="Monto mensual"
-                  placeholderTextColor="#A0A0A0"
-                  keyboardType="numeric"
-                  value={monthlyAmount}
-                  onChangeText={setMonthlyAmount}
-                />
-             
-
-            <TouchableOpacity style={styles_app.button} onPress={handleCreate} disabled={saving}>
+            <TouchableOpacity style={styles_app.button} onPress={guardarMeta} disabled={saving}>
               {saving
                 ? <ActivityIndicator color="#fff" />
-                : <Text style={styles_app.buttonText}>Guardar</Text>
+                : <Text style={styles_app.buttonText}>Confirmar</Text>
               }
             </TouchableOpacity>
-            
-            <TouchableOpacity 
-              onPress={() => {
-                setModalVisible(false);
-                setDeadlineText(''); 
-              }} 
-              style={styles_app.cancelButton}
-            >
+
+            <TouchableOpacity onPress={resetModal} style={styles_app.cancelButton}>
               <Text style={styles_app.cancelText}>Cancelar</Text>
             </TouchableOpacity>
-
           </View>
         </View>
       </Modal>

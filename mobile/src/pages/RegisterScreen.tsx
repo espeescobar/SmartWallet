@@ -4,29 +4,35 @@ import {
   StyleSheet, SafeAreaView, Alert, ActivityIndicator, ScrollView,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { styles_app } from '../styles/App.styles';
-import { useAuth } from '../context/AuthContext';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { styles_app, Colors } from '../styles/App.styles';
 import { api } from '../services/api';
+import { isValidEmail } from '../utils/validation';
+import { RootStackParamList } from '../navigation/types';
+
+type RegisterNav = NativeStackNavigationProp<RootStackParamList, 'Register'>;
 
 export default function RegisterScreen() {
-  const [fullName, setFullName]   = useState('');
-  const [email, setEmail]         = useState('');
-  const [password, setPassword]   = useState('');
-  const [confirm, setConfirm]     = useState('');
-  const [income, setIncome]       = useState('');
-  const [loading, setLoading]     = useState(false);
-  const { login } = useAuth();
-  const navigation = useNavigation();
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [emailError, setEmailError] = useState('');
+  const navigation = useNavigation<RegisterNav>();
 
   const handleRegister = async () => {
-    if (!fullName.trim() || !email.trim() || !password || !confirm) {
-      Alert.alert('Faltan datos', 'Completa todos los campos obligatorios.');
+    setEmailError('');
+
+    if (!fullName.trim() || !email.trim() || !password) {
+      Alert.alert('Faltan datos', 'Completa todos los campos.');
       return;
     }
-    if (password !== confirm) {
-      Alert.alert('Contraseñas distintas', 'Las contraseñas no coinciden.');
+
+    if (!isValidEmail(email)) {
+      setEmailError('Correo inválido');
       return;
     }
+
     if (password.length < 8 || !/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) {
       Alert.alert('Contraseña inválida', 'Debe tener al menos 8 caracteres, una letra y un número.');
       return;
@@ -35,17 +41,25 @@ export default function RegisterScreen() {
     setLoading(true);
     try {
       await api.post('/auth/register', {
-        full_name:      fullName.trim(),
-        email:          email.trim(),
+        full_name: fullName.trim(),
+        email: email.trim(),
         password,
-        monthly_income: income ? parseInt(income, 10) : 0,
+        monthly_income: 0,
       });
-      // Login automático después del registro
-      await login(email.trim(), password);
-      navigation.reset({ index: 0, routes: [{ name: 'MainTabs' as never }] });
+      navigation.navigate('Perfilamiento', {
+        email: email.trim(),
+        password,
+      });
     } catch (err: any) {
-      const msg = err?.response?.data?.error ?? 'No se pudo crear la cuenta.';
-      Alert.alert('Error al registrarse', msg);
+      const status = err?.response?.status;
+      const msg = err?.response?.data?.error ?? '';
+      if (status === 409 || msg.toLowerCase().includes('registrado') || msg.toLowerCase().includes('exists')) {
+        setEmailError('Correo ya registrado');
+      } else if (!isValidEmail(email)) {
+        setEmailError('Correo inválido');
+      } else {
+        Alert.alert('Error al registrarse', msg || 'No se pudo crear la cuenta.');
+      }
     } finally {
       setLoading(false);
     }
@@ -62,57 +76,49 @@ export default function RegisterScreen() {
 
         <Text style={localStyles.title}>Crea tu cuenta</Text>
 
+        <Text style={styles_app.label}>Nombre</Text>
         <TextInput
           style={styles_app.input}
-          placeholder="Nombre completo"
+          placeholder="Tu nombre"
           placeholderTextColor="#A0A0A0"
           value={fullName}
           onChangeText={setFullName}
           autoCapitalize="words"
         />
+
+        <Text style={styles_app.label}>Email</Text>
         <TextInput
-          style={styles_app.input}
+          style={[styles_app.input, emailError ? { borderColor: Colors.error } : null]}
           placeholder="Correo electrónico"
           placeholderTextColor="#A0A0A0"
           value={email}
-          onChangeText={setEmail}
+          onChangeText={(v) => { setEmail(v); if (emailError) setEmailError(''); }}
           keyboardType="email-address"
           autoCapitalize="none"
         />
+        {emailError ? <Text style={localStyles.errorText}>{emailError}</Text> : null}
+
+        <Text style={styles_app.label}>Contraseña</Text>
         <TextInput
           style={styles_app.input}
-          placeholder="Contraseña (mín. 8 chars, 1 letra y 1 número)"
+          placeholder="Mín. 8 caracteres, 1 letra y 1 número"
           placeholderTextColor="#A0A0A0"
           value={password}
           onChangeText={setPassword}
           secureTextEntry
         />
-        <TextInput
-          style={styles_app.input}
-          placeholder="Confirmar contraseña"
-          placeholderTextColor="#A0A0A0"
-          value={confirm}
-          onChangeText={setConfirm}
-          secureTextEntry
-        />
-        <TextInput
-          style={styles_app.input}
-          placeholder="Ingreso mensual en CLP (opcional)"
-          placeholderTextColor="#A0A0A0"
-          value={income}
-          onChangeText={setIncome}
-          keyboardType="numeric"
-        />
 
         <TouchableOpacity style={styles_app.button} onPress={handleRegister} disabled={loading}>
           {loading
             ? <ActivityIndicator color="#fff" />
-            : <Text style={styles_app.buttonText}>Crear cuenta</Text>
+            : <Text style={styles_app.buttonText}>Registrar</Text>
           }
         </TouchableOpacity>
 
         <TouchableOpacity onPress={() => navigation.goBack()} style={localStyles.link}>
-          <Text style={localStyles.linkText}>¿Ya tienes cuenta? <Text style={localStyles.linkBold}>Inicia sesión</Text></Text>
+          <Text style={localStyles.linkText}>
+            ¿Ya tienes cuenta? <Text style={localStyles.linkBold}>Inicia sesión</Text>
+          </Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
@@ -141,6 +147,12 @@ const localStyles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 24,
     color: '#1A1A1A',
+  },
+  errorText: {
+    color: Colors.error,
+    fontSize: 14,
+    marginTop: -8,
+    marginBottom: 8,
   },
   link: {
     marginTop: 20,

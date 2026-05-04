@@ -1,8 +1,12 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet, SafeAreaView, Alert, ActivityIndicator } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { styles_app } from '../styles/App.styles';
 import { useAuth } from '../context/AuthContext';
+import { RootStackParamList } from '../navigation/types';
+
+type LoginNav = NativeStackNavigationProp<RootStackParamList, 'Login'>;
 
 
 export default function LoginScreen() {
@@ -10,7 +14,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [loading, setLoading]   = useState(false);
   const { login } = useAuth();
-  const navigation = useNavigation();
+  const navigation = useNavigation<LoginNav>();
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -20,7 +24,7 @@ export default function LoginScreen() {
     setLoading(true);
     try {
       await login(email.trim(), password);
-      navigation.reset({ index: 0, routes: [{ name: 'MainTabs' as never }] });
+      navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
     } catch (err: any) {
       const msg = err?.response?.data?.error ?? 'No se pudo conectar con el servidor.';
       Alert.alert('Error al ingresar', msg);
@@ -66,7 +70,7 @@ export default function LoginScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            onPress={() => navigation.navigate('Register' as never)}
+            onPress={() => navigation.navigate('Register')}
             style={{ marginTop: 20, alignItems: 'center' }}
           >
             <Text style={{ color: '#888', fontSize: 14 }}>

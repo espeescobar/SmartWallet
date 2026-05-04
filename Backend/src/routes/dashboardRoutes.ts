@@ -6,7 +6,8 @@ const router = Router();
 
 router.use(authenticate);
 
-// GET /api/v1/dashboard/summary?month=2025-05
 router.get('/summary', dashboard.getSummary);
+router.post('/categories', dashboard.createCategory);
+router.get('/categories', dashboard.getCategories);
 
-export default router;
+export default router; 

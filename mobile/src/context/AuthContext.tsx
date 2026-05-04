@@ -7,6 +7,7 @@ interface User {
   full_name: string;
   email: string;
   monthly_income: number;
+  avatar_url?: string | null;
 }
 
 interface AuthContextData {

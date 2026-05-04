@@ -22,14 +22,22 @@ export default function FormGastos({ onSaved }: Props) {
   const [categories, setCategories]     = useState<Category[]>([]);
 
   useEffect(() => {
-    api.get('/categories?type=expense')
-      .then((res) => setCategories(res.data))
-      .catch(() => {});
+    api.get('/dashboard/categories?type=expense')
+      .then((res) => {
+        setCategories(res.data);
+      })
+      .catch((err) => {
+        console.error('Error al cargar categorías:', err?.response?.data || err.message);
+      });
   }, []);
 
   const handleSubmit = async () => {
-    if (!amount || !categoria) {
-      Alert.alert('Ojo 👀', 'Falta el monto o seleccionar la categoría.');
+    if (!amount || parseInt(amount, 10) <= 0) {
+      Alert.alert('Monto requerido', 'Ingresar un monto para continuar');
+      return;
+    }
+    if (!categoria) {
+      Alert.alert('Categoría requerida', 'Selecciona una categoría para continuar.');
       return;
     }
     const parsed = parseInt(amount, 10);
@@ -70,14 +78,14 @@ export default function FormGastos({ onSaved }: Props) {
 
       <TouchableOpacity style={styles.categorySelector} onPress={() => setModalVisible(true)}>
         <Text style={categoria ? styles.categoryTextFilled : styles.categoryTextPlaceholder}>
-          {categoria ? `${categoria.icon} ${categoria.name}` : 'Elige en qué gastaste'}
+          {categoria ? `${categoria.icon} ${categoria.name}` : 'Elegir categoría'}
         </Text>
       </TouchableOpacity>
 
       <TouchableOpacity style={styles_app.button} onPress={handleSubmit} disabled={saving}>
         {saving
           ? <ActivityIndicator color="#fff" />
-          : <Text style={styles_app.buttonText}>Guardar</Text>
+          : <Text style={styles_app.buttonText}>Aceptar</Text>
         }
       </TouchableOpacity>
 
