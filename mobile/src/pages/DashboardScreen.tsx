@@ -52,38 +52,42 @@ export default function DashboardScreen() {
   };
 
   const handleCreateCategory = async () => {
+
     if (!newName.trim()) {
       Alert.alert('Falta el nombre', 'Dale un nombre a tu nueva categoría.');
       return;
     }
-
-    const parsedBudget = parseInt(newBudget, 10);
-    if (isNaN(parsedBudget) || parsedBudget < 0) {
-      Alert.alert('Monto inválido', 'Ingresa un gasto estimado válido.');
-      return;
+    let parsedBudget: number | undefined = undefined;
+    if (newBudget.trim() !== '') {
+      parsedBudget = parseInt(newBudget, 10);
+      if (isNaN(parsedBudget) || parsedBudget < 0) {
+        Alert.alert('Monto inválido', 'Ingresa un gasto estimado válido o déjalo en blanco.');
+        return;
+      }
     }
 
     setSaving(true);
     try {
-      // Ajusta esta ruta y payload según cómo esté configurado tu backend
-      await api.post('/categories', {
+      await api.post('/dashboard/categories', {
         name: newName.trim(),
         type: 'expense',
-        budget_amount: parsedBudget, // Enviamos el presupuesto estimado
-        icon: '🏷️', // Icono por defecto (puedes hacer que el usuario lo elija luego)
-        color: '#005AD6' // Color por defecto (azul)
+        budget_amount: parsedBudget, 
+        icon: '🏷️', 
+        color: '#005AD6' 
       });
       
       setModalVisible(false);
       setNewName('');
       setNewBudget('');
-      load(); // Recargamos el dashboard para mostrar la nueva categoría
+      load(); 
     } catch (err: any) {
       Alert.alert('Error', err?.response?.data?.error ?? 'No se pudo crear la categoría.');
     } finally {
       setSaving(false);
     }
   };
+
+  
 
   return (
     <SafeAreaView style={styles_app.safeArea}>
@@ -137,7 +141,7 @@ export default function DashboardScreen() {
               })
         }
 
-        {/* Botón para crear nueva categoría */}
+       
         {!loading && (
           <TouchableOpacity 
             style={[styles_app.button, { marginTop: 20, backgroundColor: '#D9EBFF' }]} 

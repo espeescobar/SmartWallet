@@ -53,5 +53,64 @@ export const dashboardService = {
       balance: total_income - total_expenses,
       categories: cats,
     };
-  },
+  }, // <-- AQUÍ TERMINA getSummary
+
+  // NUEVO SERVICIO PARA OBTENER LAS CATEGORÍAS DEL USUARIO (AHORA SÍ ESTÁ AFUERA)
+  async getCategories(userId: string, type?: string) {
+    let query = `
+      SELECT id, name, icon, color 
+      FROM categories 
+      WHERE user_id = $1
+    `;
+    const params: any[] = [userId];
+
+    // Si enviamos un tipo específico (como 'expense' desde FormGastos), filtramos por eso
+    if (type) {
+      query += ` AND type = $2`;
+      params.push(type);
+    }
+
+    query += ` ORDER BY name ASC`;
+
+    const { rows } = await pool.query(query, params);
+    return rows;
+  }, // <-- COMA PARA SEPARAR FUNCIONES
+
+  // NUEVO METODO PARA CREAR CATEGORIAS CON PRESUPUESTO
+  async createCategory(userId: string, data: { name: string; type: string; budget_amount?: number; icon?: string; color?: string }) {
+    const client = await pool.connect();
+
+    try {
+      await client.query('BEGIN'); // Iniciamos la transacción
+
+      const categoryResult = await client.query(
+        `INSERT INTO categories (user_id, name, icon, color, type, is_default)
+         VALUES ($1, $2, $3, $4, $5, $6)
+         RETURNING id, name, icon, color, type`,
+        [userId, data.name, data.icon || '🏷️', data.color || '#005AD6', data.type, false]
+      );
+
+      const newCategory = categoryResult.rows[0];
+
+      if (data.budget_amount !== undefined && data.budget_amount >= 0) {
+        const now = new Date();
+        const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+        await client.query(
+          `INSERT INTO monthly_budgets (user_id, category_id, amount, month)
+           VALUES ($1, $2, $3, $4)`,
+          [userId, newCategory.id, data.budget_amount, firstDayOfMonth]
+        );
+      }
+
+      await client.query('COMMIT'); 
+      return newCategory;
+
+    } catch (error) {
+      await client.query('ROLLBACK'); 
+      throw error;
+    } finally {
+      client.release(); 
+    }
+  }
 };

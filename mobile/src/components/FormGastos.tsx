@@ -22,9 +22,13 @@ export default function FormGastos({ onSaved }: Props) {
   const [categories, setCategories]     = useState<Category[]>([]);
 
   useEffect(() => {
-    api.get('/categories?type=expense')
-      .then((res) => setCategories(res.data))
-      .catch(() => {});
+    api.get('/dashboard/categories?type=expense')
+      .then((res) => {
+        setCategories(res.data);
+      })
+      .catch((err) => {
+        console.error('Error al cargar categorías:', err?.response?.data || err.message);
+      });
   }, []);
 
   const handleSubmit = async () => {
