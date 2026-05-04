@@ -5,9 +5,10 @@ import { useFonts, Inter_400Regular } from '@expo-google-fonts/inter';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
-
+import { AuthProvider } from './src/context/AuthContext';
 import LoginScreen from './src/pages/LoginScreen';
-import NavBar from './src/components/NavBar'; 
+import RegisterScreen from './src/pages/RegisterScreen';
+import NavBar from './src/components/NavBar';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -27,22 +28,28 @@ export default function App() {
   if (!fontsLoaded) return null;
 
   return (
-    <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
-      <NavigationContainer>
-        <Stack.Navigator initialRouteName="Login">
-          <Stack.Screen 
-            name="Login" 
-            component={LoginScreen} 
-            options={{ headerShown: false }} 
-          />
-         
-          <Stack.Screen 
-            name="MainTabs" 
-            component={NavBar} 
-            options={{ headerShown: false }} 
-          />
-        </Stack.Navigator>
-      </NavigationContainer>
-    </View>
+    <AuthProvider>
+      <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
+        <NavigationContainer>
+          <Stack.Navigator initialRouteName="Login">
+            <Stack.Screen
+              name="Login"
+              component={LoginScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="Register"
+              component={RegisterScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="MainTabs"
+              component={NavBar}
+              options={{ headerShown: false }}
+            />
+          </Stack.Navigator>
+        </NavigationContainer>
+      </View>
+    </AuthProvider>
   );
 }

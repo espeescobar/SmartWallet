@@ -1,73 +1,108 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, SafeAreaView } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, ScrollView, SafeAreaView, ActivityIndicator, RefreshControl } from 'react-native';
 import { styles } from '../styles/DashboardScreen.styles';
 import { styles_app } from '../styles/App.styles';
-import TarjetaCategoria from '../components/TarjetaCategoria'; 
+import TarjetaCategoria from '../components/TarjetaCategoria';
+import { api } from '../services/api';
+
+interface CategorySummary {
+  category_id: string;
+  category_name: string;
+  category_icon: string;
+  category_color: string;
+  total_amount: number;
+  transaction_count: number;
+}
+
+interface DashboardData {
+  total_income: number;
+  total_expenses: number;
+  balance: number;
+  categories: CategorySummary[];
+}
 
 export default function DashboardScreen() {
-    const [categoriaExpandida, setCategoriaExpandida] = useState<string | null>(null);
+  const [categoriaExpandida, setCategoriaExpandida] = useState<string | null>(null);
+  const [data, setData]         = useState<DashboardData | null>(null);
+  const [loading, setLoading]   = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-    const gastosMes = 120000;
-    
-    const resumenCategorias = [
-        { 
-            id: '1', nombre: '🍔 Comida y Antojos', monto: 45000, color: '#D9EBFF',
-            gastos: [
-                { id: 'g1', descripcion: 'Burger King', fecha: '12 Abr', monto: 15000 },
-                { id: 'g2', descripcion: 'Sushi Delivery', fecha: '08 Abr', monto: 30000 }
-            ]
-        },
-        { 
-            id: '2', nombre: '🚇 Transporte', monto: 20000, color: '#6E6E73',
-            gastos: [
-                { id: 'g3', descripcion: 'Carga Bip!', fecha: '10 Abr', monto: 10000 },
-                { id: 'g4', descripcion: 'Uber a casa', fecha: '05 Abr', monto: 10000 }
-            ]
-        },
-        { 
-            id: '3', nombre: '🛒 Supermercado', monto: 55000, color: '#005AD6',
-            gastos: [
-                { id: 'g5', descripcion: 'Jumbo', fecha: '14 Abr', monto: 45000 },
-                { id: 'g6', descripcion: 'Líder Express', fecha: '02 Abr', monto: 10000 }
-            ]
-        },
-    ];
+  const load = useCallback(async () => {
+    try {
+      const month = new Date().toISOString().slice(0, 7);
+      const res = await api.get(`/dashboard/summary?month=${month}`);
+      setData(res.data);
+    } catch {
+      // mantiene el estado anterior
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
 
-    const toggleCategoria = (id: string) => {
-        setCategoriaExpandida(categoriaExpandida === id ? null : id);
-    };
+  useEffect(() => { load(); }, [load]);
 
-    return (
-        <SafeAreaView style={styles_app.safeArea}>
-            <ScrollView style={styles_app.container} showsVerticalScrollIndicator={false}>
-                
-                <Text style={styles_app.screenTitle}>Tus Gastos</Text>
-                <Text style={styles_app.subtitle}>Resumen de este mes</Text>
+  const onRefresh = () => { setRefreshing(true); load(); };
 
-                <View style={styles.totalCard}>
-                    <Text style={styles.totalTitle}>Total Gastado</Text>
-                    <Text style={styles.totalAmount}>${gastosMes.toLocaleString('es-CL')}</Text>
-                </View>
+  const toggleCategoria = (id: string) => {
+    setCategoriaExpandida(categoriaExpandida === id ? null : id);
+  };
 
-                <Text style={styles_app.sectionTitle}>¿En qué se te fue la plata?</Text>
-            
-                {resumenCategorias.map((cat) => {
-                    const porcentaje = (cat.monto / gastosMes) * 100;
-                    const estaAbierta = categoriaExpandida === cat.id;
+  return (
+    <SafeAreaView style={styles_app.safeArea}>
+      <ScrollView
+        style={styles_app.container}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      >
+        <Text style={styles_app.screenTitle}>Tus Gastos</Text>
+        <Text style={styles_app.subtitle}>Resumen de este mes</Text>
 
-                    return (
-                        <TarjetaCategoria 
-                            key={cat.id}
-                            cat={cat}
-                            porcentaje={porcentaje}
-                            estaAbierta={estaAbierta}
-                            alPresionar={() => toggleCategoria(cat.id)}
-                        />
-                    );
-                })}
+        <View style={styles.totalCard}>
+          <Text style={styles.totalTitle}>Total Gastado</Text>
+          {loading
+            ? <ActivityIndicator />
+            : <Text style={styles.totalAmount}>
+                ${(data?.total_expenses ?? 0).toLocaleString('es-CL')}
+              </Text>
+          }
+        </View>
 
-                <View style={styles.bottomPadding} />
-            </ScrollView>
-        </SafeAreaView>
-    );
+        <Text style={styles_app.sectionTitle}>¿En qué se te fue la plata?</Text>
+
+        {loading
+          ? <ActivityIndicator style={{ marginTop: 20 }} />
+          : data?.categories.length === 0
+            ? <Text style={{ color: '#888', padding: 16 }}>Sin gastos registrados este mes.</Text>
+            : data?.categories.map((cat) => {
+                const porcentaje = data.total_expenses > 0
+                  ? (cat.total_amount / data.total_expenses) * 100
+                  : 0;
+                const estaAbierta = categoriaExpandida === cat.category_id;
+
+                // TarjetaCategoria espera la forma original {id, nombre, monto, color, gastos[]}
+                const catAdapted = {
+                  id:     cat.category_id,
+                  nombre: `${cat.category_icon} ${cat.category_name}`,
+                  monto:  cat.total_amount,
+                  color:  cat.category_color ?? '#D9EBFF',
+                  gastos: [],
+                };
+
+                return (
+                  <TarjetaCategoria
+                    key={cat.category_id}
+                    cat={catAdapted}
+                    porcentaje={porcentaje}
+                    estaAbierta={estaAbierta}
+                    alPresionar={() => toggleCategoria(cat.category_id)}
+                  />
+                );
+              })
+        }
+
+        <View style={styles.bottomPadding} />
+      </ScrollView>
+    </SafeAreaView>
+  );
 }

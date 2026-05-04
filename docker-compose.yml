@@ -1,0 +1,112 @@
+# ═══════════════════════════════════════════════════════════════════
+# SmartWallet — Stack de desarrollo local
+#
+# Servicios:
+#   postgres  → PostgreSQL 16 (puerto 5432)
+#   api       → Node.js + Express con hot-reload (puerto 3000)
+#   pgadmin   → GUI para explorar la base de datos (puerto 5050)
+#
+# Primeros pasos:
+#   1. cp .env.example .env          # completar las variables
+#   2. docker compose up -d          # levantar los tres servicios
+#   3. docker compose logs -f api    # ver logs en tiempo real
+#   4. docker compose down           # apagar (los datos persisten en volúmenes)
+#   5. docker compose down -v        # apagar y BORRAR datos (reset total)
+# ═══════════════════════════════════════════════════════════════════
+
+services:
+
+  # ────────────────────────────────────────────────────────────────
+  # 1. PostgreSQL 16
+  # ────────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: smartwallet_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB:       ${DB_NAME}
+      POSTGRES_USER:     ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      # Persistencia de datos entre reinicios
+      - postgres_data:/var/lib/postgresql/data
+      # Script SQL que se ejecuta SOLO la primera vez que el volumen está vacío
+      # (crea todas las tablas, triggers, seeds de categorías, etc.)
+      - ./Backend/src/database/migrations/001_initial_schema.sql:/docker-entrypoint-initdb.d/001_initial_schema.sql:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - smartwallet_net
+
+  # ────────────────────────────────────────────────────────────────
+  # 2. API Node.js (hot-reload en desarrollo)
+  # ────────────────────────────────────────────────────────────────
+  api:
+    build:
+      context: ./Backend
+      dockerfile: Dockerfile
+      target: development      # usa el stage con ts-node + nodemon
+    container_name: smartwallet_api
+    restart: unless-stopped
+    env_file:
+      - .env                   # carga todas las variables del .env raíz
+    environment:
+      # Dentro de Docker el hostname es el nombre del servicio, no localhost
+      DB_HOST: postgres
+      NODE_ENV: development
+    ports:
+      - "${PORT:-3000}:3000"
+    volumes:
+      # Montar solo el código fuente → nodemon detecta cambios y recarga
+      - ./Backend/src:/app/src
+      - ./Backend/index.ts:/app/index.ts
+      # Volumen nombrado para node_modules: usa los del contenedor, no los del host
+      - api_node_modules:/app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy    # espera a que Postgres esté listo
+    networks:
+      - smartwallet_net
+
+  # ────────────────────────────────────────────────────────────────
+  # 3. pgAdmin 4 — interfaz gráfica para PostgreSQL
+  #    Acceso: http://localhost:5050
+  # ────────────────────────────────────────────────────────────────
+  pgadmin:
+    image: dpage/pgadmin4:8
+    container_name: smartwallet_pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL:              ${PGADMIN_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD:           ${PGADMIN_PASSWORD}
+      PGADMIN_CONFIG_SERVER_MODE:         "False"   # modo desktop (un solo usuario)
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    networks:
+      - smartwallet_net
+
+# ═══════════════════════════════════════════════════════════════════
+# Volúmenes con nombre (persisten entre `docker compose down`)
+# ═══════════════════════════════════════════════════════════════════
+volumes:
+  postgres_data:
+  pgadmin_data:
+  api_node_modules:   # node_modules aislados del host
+
+# ═══════════════════════════════════════════════════════════════════
+# Red interna — los servicios se comunican por nombre (postgres, api)
+# ═══════════════════════════════════════════════════════════════════
+networks:
+  smartwallet_net:
+    driver: bridge

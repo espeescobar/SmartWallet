@@ -1,0 +1,24 @@
+# Dependencias del host — se instalan dentro del contenedor
+node_modules
+
+# Build anterior — se genera dentro del contenedor
+dist
+
+# Variables de entorno — nunca en la imagen
+.env
+.env.local
+.env.production
+
+# Archivos de sistema y desarrollo
+.DS_Store
+*.log
+npm-debug.log*
+
+# Git
+.git
+.gitignore
+
+# Editor
+.vscode
+.idea
+*.swp
