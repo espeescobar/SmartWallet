@@ -125,4 +125,5 @@ export const styles = StyleSheet.create({
     padding: 20,
     textAlign: 'center',
   },
+  
 });

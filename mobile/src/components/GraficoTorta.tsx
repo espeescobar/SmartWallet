@@ -6,14 +6,15 @@ import { styles } from '../styles/Estadisticas.styles';
 interface Segmento {
   label: string;
   value: number;
-  color: string;
+  color?: string;
 }
 
 interface Props {
   data: Segmento[];
 }
 
-const CHART_COLORS = [Colors.azul, Colors.celeste, '#7ea4d9', Colors.textoSuave, '#4CAF50', '#FF9800'];
+// Paleta ajustada para mantener la cohesión visual de la app
+const CHART_COLORS = ['#005AD6', '#6E6E73', '#1A1A1A'];
 
 export default function GraficoTorta({ data }: Props) {
   const total = data.reduce((sum, d) => sum + d.value, 0);
@@ -31,6 +32,10 @@ export default function GraficoTorta({ data }: Props) {
           const pct = seg.value / total;
           const rotation = acumulado * 360;
           acumulado += pct;
+          
+          // Forzamos el uso de la paleta iterando con el índice
+          const colorFinal = CHART_COLORS[i % CHART_COLORS.length];
+
           return (
             <View
               key={seg.label}
@@ -45,7 +50,7 @@ export default function GraficoTorta({ data }: Props) {
                 style={{
                   width: '50%',
                   height: '100%',
-                  backgroundColor: seg.color || CHART_COLORS[i % CHART_COLORS.length],
+                  backgroundColor: colorFinal,
                   transformOrigin: 'right center',
                   transform: [{ rotate: `${Math.min(pct * 360, 180)}deg` }],
                   borderTopLeftRadius: 80,
@@ -74,15 +79,19 @@ export default function GraficoTorta({ data }: Props) {
         </View>
       </View>
 
-      {data.map((seg, i) => (
-        <View key={seg.label} style={styles.legendRow}>
-          <View style={[styles.legendDot, { backgroundColor: seg.color || CHART_COLORS[i % CHART_COLORS.length] }]} />
-          <Text style={styles.legendLabel}>{seg.label}</Text>
-          <Text style={styles.legendValue}>
-            ${seg.value.toLocaleString('es-CL')} ({Math.round((seg.value / total) * 100)}%)
-          </Text>
-        </View>
-      ))}
+      {data.map((seg, i) => {
+        const colorFinal = CHART_COLORS[i % CHART_COLORS.length];
+        
+        return (
+          <View key={seg.label} style={styles.legendRow}>
+            <View style={[styles.legendDot, { backgroundColor: colorFinal }]} />
+            <Text style={styles.legendLabel}>{seg.label}</Text>
+            <Text style={styles.legendValue}>
+              ${seg.value.toLocaleString('es-CL')} ({Math.round((seg.value / total) * 100)}%)
+            </Text>
+          </View>
+        );
+      })}
     </View>
   );
 }
