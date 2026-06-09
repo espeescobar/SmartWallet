@@ -16,12 +16,12 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-// 1. Agregamos la interfaz de la transacción que esperamos del backend
-interface Transaction {
+export interface Transaction {
   id: string;
   description: string;
   amount: number;
   date: string;
+  transaction_date?: string;
 }
 
 interface CategorySummary {
@@ -31,7 +31,7 @@ interface CategorySummary {
   category_color: string;
   total_amount: number;
   transaction_count: number;
-  transactions?: Transaction[]; // <-- Agregado para recibir el historial del backend
+  transactions?: Transaction[];
 }
 
 interface DashboardData {
@@ -41,7 +41,7 @@ interface DashboardData {
   categories: CategorySummary[];
 }
 
-type FiltroTemporal = 'semana' | 'mes' | 'trimestre' | 'anio';
+export type FiltroTemporal = 'semana' | 'mes' | 'trimestre' | 'anio';
 
 const FILTROS: { key: FiltroTemporal; label: string }[] = [
   { key: 'semana', label: 'Semana Actual' },
@@ -81,16 +81,6 @@ function getDateRange(filtro: FiltroTemporal): { from: string; to: string; month
   };
 }
 
-function generarDatosLinea(total: number): { label: string; value: number }[] {
-  const dias = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
-  const hoy = new Date().getDay();
-  const offset = hoy === 0 ? 6 : hoy - 1;
-  return dias.map((label, i) => ({
-    label,
-    value: i <= offset ? Math.round((total / (offset + 1)) * (0.5 + Math.random())) : 0,
-  }));
-}
-
 export default function DashboardScreen() {
   const [categoriaExpandida, setCategoriaExpandida] = useState<string | null>(null);
   const [data, setData] = useState<DashboardData | null>(null);
@@ -110,7 +100,6 @@ export default function DashboardScreen() {
       const { from, to, month } = getDateRange(filtro);
       const res = await api.get(`/dashboard/summary?month=${month}&from=${from}&to=${to}`);
       setData(res.data);
-      // Si el filtro cambia, cerramos cualquier categoría abierta por precaución visual
       setCategoriaExpandida(null); 
     } catch {
       setSinConexion(true);
@@ -125,7 +114,6 @@ export default function DashboardScreen() {
 
   const onRefresh = () => { setRefreshing(true); load(); };
 
-  // 2. Agregamos la animación suave al abrir/cerrar categorías
   const toggleCategoria = (id: string) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setCategoriaExpandida(categoriaExpandida === id ? null : id);
@@ -151,7 +139,7 @@ export default function DashboardScreen() {
         name: newName.trim(),
         type: 'expense',
         budget_amount: parsedBudget,
-        icon: '🏷️',
+        icon: selectedEmoji, // <-- Corregido para usar el emoji seleccionado
         color: '#005AD6',
       });
       setModalVisible(false);
@@ -171,10 +159,20 @@ export default function DashboardScreen() {
     color: cat.category_color || CHART_COLORS[i % CHART_COLORS.length],
   }));
 
-  const lineData = useMemo(
-    () => generarDatosLinea(data?.total_expenses ?? 0),
-    [data?.total_expenses, filtro]
-  );
+  // --- AQUÍ ESTÁ LA MAGIA QUE FALTABA ---
+  // Aplanamos todas las transacciones de todas las categorías en un solo arreglo
+  const allTransactions = useMemo(() => {
+    if (!data || !data.categories) return [];
+    
+    let transactions: Transaction[] = [];
+    data.categories.forEach(cat => {
+      if (cat.transactions) {
+        transactions = [...transactions, ...cat.transactions];
+      }
+    });
+    return transactions;
+  }, [data]);
+  // --------------------------------------
 
   return (
     <SafeAreaView style={styles_app.safeArea}>
@@ -234,8 +232,9 @@ export default function DashboardScreen() {
               </View>
 
               <View style={statsStyles.chartCard}>
-                <Text style={statsStyles.chartTitle}>Gastos a lo largo del mes</Text>
-                <GraficoLinea data={lineData} />
+                <Text style={statsStyles.chartTitle}>Gastos a lo largo del periodo</Text>
+                {/* Ahora allTransactions SÍ existe y se lo pasamos al gráfico */}
+                <GraficoLinea transactions={allTransactions} filtro={filtro} />
               </View>
 
               <Text style={styles_app.sectionTitle}>Detalle por categoría</Text>
@@ -247,9 +246,7 @@ export default function DashboardScreen() {
                     ? (cat.total_amount / data.total_expenses) * 100
                     : 0;
                   
-                  // 3. Mapeamos las transacciones del backend al formato que necesita tu TarjetaCategoria
                   const transaccionesAdaptadas = (cat.transactions || []).map((t) => {
-                    // Formateamos la fecha si es necesario (ej: "2026-04-12" -> "12 Abr")
                     const dateObj = new Date(t.date);
                     const dia = dateObj.getDate();
                     const mes = dateObj.toLocaleString('es-ES', { month: 'short' });
@@ -258,7 +255,7 @@ export default function DashboardScreen() {
                       id: t.id,
                       descripcion: t.description,
                       fechaReal: t.date,
-                      fechaVisual: `${dia} ${mes.charAt(0).toUpperCase() + mes.slice(1)}`, // Ej: "12 Abr"
+                      fechaVisual: `${dia} ${mes.charAt(0).toUpperCase() + mes.slice(1)}`, 
                       monto: t.amount
                     };
                   });
@@ -268,7 +265,7 @@ export default function DashboardScreen() {
                     nombre: `${cat.category_icon} ${cat.category_name}`,
                     monto: cat.total_amount,
                     color: cat.category_color ?? '#D9EBFF',
-                    gastos: transaccionesAdaptadas, // Pasamos el array mapeado
+                    gastos: transaccionesAdaptadas, 
                   };
 
                   return (
@@ -294,16 +291,13 @@ export default function DashboardScreen() {
         }
 
         <View style={dashStyles.bottomPadding} />
-        </ScrollView>
-
-
+      </ScrollView>
 
       <Modal visible={modalVisible} animationType="slide" transparent>
         <View style={styles_app.overlay}>
           <View style={styles_app.modalContainer}>
             <Text style={styles_app.modalTitle}>Nueva Categoría</Text>
             
-            {/* --- SELECTOR DE EMOJIS --- */}
             <Text style={{ marginBottom: 8, color: '#6E6E73', fontWeight: '600' }}>Elige un ícono:</Text>
             <View style={{ height: 60, marginBottom: 15 }}>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled">
@@ -315,7 +309,6 @@ export default function DashboardScreen() {
                       padding: 10,
                       marginRight: 8,
                       borderRadius: 12,
-                      // Destacamos el emoji seleccionado
                       borderWidth: selectedEmoji === emoji ? 2 : 1,
                       borderColor: selectedEmoji === emoji ? '#005AD6' : '#6E6E73',
                       alignItems: 'center',
@@ -356,7 +349,7 @@ export default function DashboardScreen() {
                 setModalVisible(false); 
                 setNewName(''); 
                 setNewBudget(''); 
-                setSelectedEmoji(selectedEmoji); // Limpiamos el emoji al cancelar
+                setSelectedEmoji(selectedEmoji); 
               }}
               style={styles_app.cancelButton}
             >
@@ -368,4 +361,3 @@ export default function DashboardScreen() {
     </SafeAreaView>
   );
 }
-  
