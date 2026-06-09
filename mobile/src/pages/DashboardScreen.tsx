@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View, Text, ScrollView, SafeAreaView, ActivityIndicator, RefreshControl,
-  TouchableOpacity, Modal, TextInput, Alert,
+  TouchableOpacity, Modal, TextInput, Alert, LayoutAnimation, UIManager, Platform
 } from 'react-native';
 import { styles as dashStyles } from '../styles/DashboardScreen.styles';
 import { styles as statsStyles } from '../styles/Estadisticas.styles';
@@ -11,6 +11,19 @@ import GraficoTorta from '../components/GraficoTorta';
 import GraficoLinea from '../components/GraficoLinea';
 import { api } from '../services/api';
 
+// Configuración para animar el despliegue del acordeón en Android
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
+// 1. Agregamos la interfaz de la transacción que esperamos del backend
+interface Transaction {
+  id: string;
+  description: string;
+  amount: number;
+  date: string;
+}
+
 interface CategorySummary {
   category_id: string;
   category_name: string;
@@ -18,6 +31,7 @@ interface CategorySummary {
   category_color: string;
   total_amount: number;
   transaction_count: number;
+  transactions?: Transaction[]; // <-- Agregado para recibir el historial del backend
 }
 
 interface DashboardData {
@@ -37,6 +51,7 @@ const FILTROS: { key: FiltroTemporal; label: string }[] = [
 ];
 
 const CHART_COLORS = [Colors.azul, Colors.celeste, '#7ea4d9', Colors.textoSuave, '#4CAF50', '#FF9800'];
+const EMOJI_LIST = ['🎯', '✈️', '💻', '🚗', '🏠', '📱', '🎓', '🎮', '👗', '🐶', '🏥', '🎉', '🎁', '🍔', '🛒', '🚲'];
 
 function getDateRange(filtro: FiltroTemporal): { from: string; to: string; month: string } {
   const now = new Date();
@@ -87,6 +102,7 @@ export default function DashboardScreen() {
   const [newName, setNewName] = useState('');
   const [newBudget, setNewBudget] = useState('');
   const [saving, setSaving] = useState(false);
+  const [selectedEmoji, setSelectedEmoji] = useState('🎯'); 
 
   const load = useCallback(async () => {
     try {
@@ -94,6 +110,8 @@ export default function DashboardScreen() {
       const { from, to, month } = getDateRange(filtro);
       const res = await api.get(`/dashboard/summary?month=${month}&from=${from}&to=${to}`);
       setData(res.data);
+      // Si el filtro cambia, cerramos cualquier categoría abierta por precaución visual
+      setCategoriaExpandida(null); 
     } catch {
       setSinConexion(true);
       setData(null);
@@ -107,7 +125,9 @@ export default function DashboardScreen() {
 
   const onRefresh = () => { setRefreshing(true); load(); };
 
+  // 2. Agregamos la animación suave al abrir/cerrar categorías
   const toggleCategoria = (id: string) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setCategoriaExpandida(categoriaExpandida === id ? null : id);
   };
 
@@ -171,7 +191,11 @@ export default function DashboardScreen() {
             <TouchableOpacity
               key={f.key}
               style={[statsStyles.filterChip, filtro === f.key && statsStyles.filterChipActive]}
-              onPress={() => { setLoading(true); setFiltro(f.key); }}
+              onPress={() => { 
+                LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                setLoading(true); 
+                setFiltro(f.key); 
+              }}
             >
               <Text style={[statsStyles.filterText, filtro === f.key && statsStyles.filterTextActive]}>
                 {f.label}
@@ -189,7 +213,7 @@ export default function DashboardScreen() {
         )}
 
         {loading && !sinConexion
-          ? <ActivityIndicator style={{ marginTop: 20 }} />
+          ? <ActivityIndicator style={{ marginTop: 20 }} color={Colors.azul} />
           : !sinConexion && (
             <>
               <View style={dashStyles.totalCard}>
@@ -215,19 +239,38 @@ export default function DashboardScreen() {
               </View>
 
               <Text style={styles_app.sectionTitle}>Detalle por categoría</Text>
+              
               {data?.categories.length === 0
-                ? <Text style={{ color: '#888', padding: 16 }}>Sin gastos registrados.</Text>
+                ? <Text style={{ color: '#888', padding: 16 }}>Sin gastos registrados en este período.</Text>
                 : data?.categories.map((cat) => {
                   const porcentaje = (data.total_expenses ?? 0) > 0
                     ? (cat.total_amount / data.total_expenses) * 100
                     : 0;
+                  
+                  // 3. Mapeamos las transacciones del backend al formato que necesita tu TarjetaCategoria
+                  const transaccionesAdaptadas = (cat.transactions || []).map((t) => {
+                    // Formateamos la fecha si es necesario (ej: "2026-04-12" -> "12 Abr")
+                    const dateObj = new Date(t.date);
+                    const dia = dateObj.getDate();
+                    const mes = dateObj.toLocaleString('es-ES', { month: 'short' });
+                    
+                    return {
+                      id: t.id,
+                      descripcion: t.description,
+                      fechaReal: t.date,
+                      fechaVisual: `${dia} ${mes.charAt(0).toUpperCase() + mes.slice(1)}`, // Ej: "12 Abr"
+                      monto: t.amount
+                    };
+                  });
+
                   const catAdapted = {
                     id: cat.category_id,
                     nombre: `${cat.category_icon} ${cat.category_name}`,
                     monto: cat.total_amount,
                     color: cat.category_color ?? '#D9EBFF',
-                    gastos: [],
+                    gastos: transaccionesAdaptadas, // Pasamos el array mapeado
                   };
+
                   return (
                     <TarjetaCategoria
                       key={cat.category_id}
@@ -251,35 +294,70 @@ export default function DashboardScreen() {
         }
 
         <View style={dashStyles.bottomPadding} />
-      </ScrollView>
+        </ScrollView>
+
+
 
       <Modal visible={modalVisible} animationType="slide" transparent>
         <View style={styles_app.overlay}>
           <View style={styles_app.modalContainer}>
             <Text style={styles_app.modalTitle}>Nueva Categoría</Text>
+            
+            {/* --- SELECTOR DE EMOJIS --- */}
+            <Text style={{ marginBottom: 8, color: '#6E6E73', fontWeight: '600' }}>Elige un ícono:</Text>
+            <View style={{ height: 60, marginBottom: 15 }}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                {EMOJI_LIST.map(emoji => (
+                  <TouchableOpacity
+                    key={emoji}
+                    onPress={() => setSelectedEmoji(emoji)}
+                    style={{
+                      padding: 10,
+                      marginRight: 8,
+                      borderRadius: 12,
+                      // Destacamos el emoji seleccionado
+                      borderWidth: selectedEmoji === emoji ? 2 : 1,
+                      borderColor: selectedEmoji === emoji ? '#005AD6' : '#6E6E73',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    <Text style={{ fontSize: 24 }}>{emoji}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+
             <TextInput
               style={styles_app.input}
               placeholder="Nombre (ej: Supermercado)"
-              placeholderTextColor="#A0A0A0"
+              placeholderTextColor="#6E6E73"
               value={newName}
               onChangeText={setNewName}
             />
             <TextInput
               style={styles_app.input}
               placeholder="Gasto mensual estimado (CLP)"
-              placeholderTextColor="#A0A0A0"
+              placeholderTextColor="#6E6E73"
               keyboardType="numeric"
               value={newBudget}
               onChangeText={setNewBudget}
             />
+            
             <TouchableOpacity style={styles_app.button} onPress={handleCreateCategory} disabled={saving}>
               {saving
-                ? <ActivityIndicator color="#fff" />
+                ? <ActivityIndicator color="#1A1A1A" />
                 : <Text style={styles_app.buttonText}>Guardar</Text>
               }
             </TouchableOpacity>
+            
             <TouchableOpacity
-              onPress={() => { setModalVisible(false); setNewName(''); setNewBudget(''); }}
+              onPress={() => { 
+                setModalVisible(false); 
+                setNewName(''); 
+                setNewBudget(''); 
+                setSelectedEmoji(selectedEmoji); // Limpiamos el emoji al cancelar
+              }}
               style={styles_app.cancelButton}
             >
               <Text style={styles_app.cancelText}>Cancelar</Text>
@@ -290,3 +368,4 @@ export default function DashboardScreen() {
     </SafeAreaView>
   );
 }
+  

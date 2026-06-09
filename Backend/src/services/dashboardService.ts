@@ -22,40 +22,57 @@ export const dashboardService = {
     const total_income   = parseInt(totals.find(r => r.type === 'income')?.total  ?? '0', 10);
     const total_expenses = parseInt(totals.find(r => r.type === 'expense')?.total ?? '0', 10);
 
-    // Gastos por categoría + presupuesto asignado
-    const { rows: cats } = await pool.query<CategorySummary>(
-      `SELECT
-          t.category_id,
-          c.name  AS category_name,
-          c.icon  AS category_icon,
-          c.color AS category_color,
-          SUM(t.amount)::int          AS total_amount,
-          COUNT(*)::int               AS transaction_count,
-          mb.amount                   AS budget_amount
-       FROM transactions t
-       LEFT JOIN categories    c  ON c.id  = t.category_id
-       LEFT JOIN monthly_budgets mb ON mb.category_id = t.category_id
-                                    AND mb.user_id     = t.user_id
-                                    AND mb.month       = $3::date
-       WHERE t.user_id = $1
-         AND TO_CHAR(t.transaction_date, 'YYYY-MM') = $2
-         AND t.type        = 'expense'
-         AND t.deleted_at IS NULL
-       GROUP BY t.category_id, c.name, c.icon, c.color, mb.amount
-       ORDER BY total_amount DESC`,
-      [userId, targetMonth, monthDate],
-    );
+    // Gastos por categoría + presupuesto asignado + historial de transacciones (TODO EN UNO)
+    const categoriesQuery = `
+      SELECT 
+        c.id AS category_id,
+        c.name AS category_name,
+        c.icon AS category_icon,
+        c.color AS category_color,
+        COALESCE(SUM(t.amount), 0)::int AS total_amount,
+        COUNT(t.id)::int AS transaction_count,
+        mb.amount AS budget_amount,
+        COALESCE(
+          json_agg(
+            json_build_object(
+              'id', t.id,
+              'description', t.description,
+              'amount', t.amount,
+              'date', t.transaction_date
+            )
+          ) FILTER (WHERE t.id IS NOT NULL), '[]'
+        ) AS transactions
+      FROM categories c
+      LEFT JOIN transactions t ON c.id = t.category_id 
+        AND t.user_id = $1 
+        AND TO_CHAR(t.transaction_date, 'YYYY-MM') = $2
+        AND t.deleted_at IS NULL
+        AND t.type = 'expense'
+      LEFT JOIN monthly_budgets mb ON mb.category_id = c.id
+        AND mb.user_id = $1
+        AND mb.month = $3::date
+      WHERE c.user_id = $1 AND c.type = 'expense'
+      GROUP BY c.id, c.name, c.icon, c.color, mb.amount
+      HAVING COUNT(t.id) > 0
+      ORDER BY total_amount DESC;
+    `;
+
+    
+    const { rows: categoriesRows } = await pool.query(categoriesQuery, [userId, targetMonth, monthDate]);
+
+    const categoriesFormatted = categoriesRows.map(cat => ({
+      ...cat,
+      category_color: cat.category_color || '#005AD6', 
+    }));
 
     return {
       month:  targetMonth,
       total_income,
       total_expenses,
       balance: total_income - total_expenses,
-      categories: cats,
+      categories: categoriesFormatted // Eliminado el "cats" duplicado
     };
-  }, // <-- AQUÍ TERMINA getSummary
-
-  // NUEVO SERVICIO PARA OBTENER LAS CATEGORÍAS DEL USUARIO (AHORA SÍ ESTÁ AFUERA)
+  }, 
   async getCategories(userId: string, type?: string) {
     let query = `
       SELECT id, name, icon, color 
@@ -113,4 +130,5 @@ export const dashboardService = {
       client.release(); 
     }
   }
+  
 };

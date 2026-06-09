@@ -169,17 +169,29 @@ export default function HomeScreen() {
           ? <ActivityIndicator style={{ marginTop: 20 }} />
           : (
             <View style={styles.movementsContainer}>
-              {transaccionesFiltradas.length === 0
-                ? <Text style={styles.emptyText}>Sin gastos en la última semana{categoriaFiltro ? ' para esta categoría' : ''}.</Text>
-                : transaccionesFiltradas.map((tx) => (
+            {transaccionesFiltradas.length === 0
+              ? <Text style={styles.emptyText}>Sin gastos en la última semana{categoriaFiltro ? ' para esta categoría' : ''}.</Text>
+              : transaccionesFiltradas.map((tx) => {
+                
+                // 1. Buscamos la categoría de este gasto en la lista que ya tenemos guardada en el Home
+                const catDelGasto = categories.find(c => c.id === tx.category_id);
+                
+                // 2. Si el backend manda el ícono lo usamos, si no, usamos el de la categoría encontrada, o uno por defecto
+                const icono = tx.category_icon || catDelGasto?.icon || '🏷️';
+                
+                // 3. Formateamos el título (Si no hay descripción, muestra el nombre de la categoría)
+                const nombreCategoria = tx.category_name || catDelGasto?.name || 'Gasto';
+                const tituloGasto = tx.description ? tx.description : nombreCategoria;
+
+                return (
                   <View key={tx.id} style={styles.expenseItem}>
                     <View style={styles.expenseLeft}>
                       <View style={styles.iconCircle}>
-                        <Text style={styles.iconText}>{tx.category_icon ?? '💸'}</Text>
+                        <Text style={styles.iconText}>{icono}</Text>
                       </View>
                       <View style={styles.expenseInfo}>
                         <Text style={styles.expenseDescription}>
-                          {tx.description || tx.category_name || 'Gasto'}
+                          {tituloGasto}
                         </Text>
                         <Text style={styles.expenseRelative}>{formatRelativeDate(tx.transaction_date)}</Text>
                         <Text style={styles.expenseDateTiny}>{formatFullDate(tx.transaction_date)}</Text>
@@ -189,9 +201,10 @@ export default function HomeScreen() {
                       -${tx.amount.toLocaleString('es-CL')}
                     </Text>
                   </View>
-                ))
-              }
-            </View>
+                );
+              })
+            }
+          </View>
           )
         }
 

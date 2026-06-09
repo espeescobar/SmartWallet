@@ -16,6 +16,9 @@ interface Goal {
   status: string;
 }
 
+// 1. Definimos una lista de emojis atractiva y variada
+const EMOJI_LIST = ['🎯', '✈️', '💻', '🚗', '🏠', '📱', '🎓', '🎮', '👗', '🐶', '🏥', '🎉', '🎁', '🍔', '🛒', '🚲'];
+
 export default function ObjetivosScreen() {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
@@ -24,6 +27,9 @@ export default function ObjetivosScreen() {
 
   const [newTitle, setNewTitle] = useState('');
   const [newAmount, setNewAmount] = useState('');
+  // 2. Nuevo estado para el emoji
+  const [selectedEmoji, setSelectedEmoji] = useState('🎯'); 
+  
   const [saving, setSaving] = useState(false);
   const [deadline, setDeadline] = useState(new Date(Date.now() + 365 * 24 * 60 * 60 * 1000));
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -66,6 +72,7 @@ export default function ObjetivosScreen() {
     setModalVisible(false);
     setNewTitle('');
     setNewAmount('');
+    setSelectedEmoji('🎯'); // Limpiamos también el emoji
     setDeadline(new Date(Date.now() + 365 * 24 * 60 * 60 * 1000));
     setMonthlyAmount('');
     setMonthlyEdited(false);
@@ -129,6 +136,7 @@ export default function ObjetivosScreen() {
     try {
       await api.post('/goals', {
         title: newTitle.trim(),
+        icon: selectedEmoji, // 3. ¡Enviamos el emoji al backend!
         target_amount: parsedTarget,
         deadline: deadline.toISOString(),
         monthly_contribution: parsedMonthly,
@@ -162,7 +170,8 @@ export default function ObjetivosScreen() {
             : goals.map((obj) => (
               <Objetivos
                 key={obj.id}
-                title={`${obj.icon} ${obj.title}`}
+                // Usamos obj.icon pero le damos un fallback '🎯' por si es undefined
+                title={`${obj.icon || '🎯'} ${obj.title}`} 
                 actual={obj.current_amount}
                 total={obj.target_amount}
               />
@@ -178,6 +187,31 @@ export default function ObjetivosScreen() {
         <View style={styles_app.overlay}>
           <View style={styles_app.modalContainer}>
             <Text style={styles_app.modalTitle}>Nueva meta de ahorro</Text>
+
+            {/* --- SELECTOR DE EMOJIS --- */}
+            <Text style={styles_app.label}>Ícono</Text>
+            <View style={{ height: 60, marginBottom: 15 }}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                {EMOJI_LIST.map(emoji => (
+                  <TouchableOpacity
+                    key={emoji}
+                    onPress={() => setSelectedEmoji(emoji)}
+                    style={{
+                      padding: 10,
+                      marginRight: 8,
+                      backgroundColor: selectedEmoji === emoji ? '#D9EBFF' : '#F2F2F7',
+                      borderRadius: 12,
+                      borderWidth: selectedEmoji === emoji ? 1 : 0,
+                      borderColor: '#005AD6',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    <Text style={{ fontSize: 24 }}>{emoji}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
 
             <Text style={styles_app.label}>Nombre</Text>
             <TextInput

@@ -6,7 +6,8 @@ import { Colors, styles_app } from '../styles/App.styles';
 interface Gasto {
     id: string;
     descripcion: string;
-    fecha: string;
+    fechaVisual: string; // <-- Cambiado
+    fechaReal: string;   // <-- Agregado
     monto: number;
 }
 
@@ -49,7 +50,6 @@ export default function TarjetaCategoria({ cat, porcentaje, estaAbierta, alPresi
                         styles.progressBarFill, 
                         { 
                             width: `${porcentaje}%`, 
-                            // Reemplazamos cat.color por nuestra función dinámica
                             backgroundColor: getBarColor(porcentaje) 
                         }
                     ]} 
@@ -58,15 +58,21 @@ export default function TarjetaCategoria({ cat, porcentaje, estaAbierta, alPresi
 
             {estaAbierta && (
                 <View style={styles.expandedList}>
-                    {cat.gastos.map((gasto) => (
-                        <View key={gasto.id} style={styles_app.rowBetween}>
-                            <View>
-                                <Text style={styles.gastoDescripcion}>{gasto.descripcion}</Text>
-                                <Text style={styles.gastoFecha}>{gasto.fecha}</Text>
+                    {cat.gastos.length > 0 ? (
+                        cat.gastos.map((gasto) => (
+                            <View key={gasto.id} style={[styles_app.rowBetween, { marginTop: 8 }]}>
+                                <View>
+                                    <Text style={styles.gastoDescripcion}>{gasto.descripcion}</Text>
+                                    <Text style={styles.gastoFecha}>{gasto.fechaVisual}</Text>
+                                </View>
+                                <Text style={styles.gastoDescripcion}>${gasto.monto.toLocaleString('es-CL')}</Text>
                             </View>
-                            <Text style={styles.gastoDescripcion}>${gasto.monto.toLocaleString('es-CL')}</Text>
-                        </View>
-                    ))}
+                        ))
+                    ) : (
+                        <Text style={{ marginTop: 10, color: Colors.textoSuave, textAlign: 'center', fontStyle: 'italic' }}>
+                            Sin gastos en este período.
+                        </Text>
+                    )}
                 </View>
             )}
         </TouchableOpacity>
