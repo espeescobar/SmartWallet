@@ -38,16 +38,79 @@ function stripPassword(user: Awaited<ReturnType<typeof userRepository.findByEmai
 export const authService = {
 
   async register(data: RegisterDTO): Promise<{ user: UserPublic; tokens: AuthTokens }> {
+    // 1. Extraemos el perfil para manejarlo por separado
+    const { perfil, ...userData } = data;
+    
     // zod ya normalizó el email, pero lo reafirmamos por defensa
-    const email = data.email.toLowerCase().trim();
+    const email = userData.email.toLowerCase().trim();
 
     const existing = await userRepository.findByEmail(email);
     if (existing) throw new AppError(409, 'El correo ya está registrado');
 
-    const password_hash = await bcrypt.hash(data.password, SALT_ROUNDS);
-    const user          = await userRepository.create({ ...data, email, password_hash });
-    const tokens        = generateTokens(user.id);
+    const password_hash = await bcrypt.hash(userData.password, SALT_ROUNDS);
+    
+    // 2. Preparamos datos faltantes: nombre automático e ingresos
+    const full_name = userData.full_name || email.split('@')[0];
+    const monthly_income = userData.monthly_income || perfil?.ingresos || 0;
 
+    // 3. Creamos al usuario usando tu repositorio perfecto
+    const user = await userRepository.create({ 
+      ...userData, 
+      email, 
+      password_hash,
+      full_name,
+      monthly_income 
+    });
+
+    // 4. --- MAGIA DEL PERFILAMIENTO ---
+    // Usamos pool.connect() para asegurar que los presupuestos se creen correctamente
+    if (perfil) {
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        
+        const date = new Date();
+        const currentMonth = new Date(date.getFullYear(), date.getMonth(), 1).toISOString().slice(0, 10);
+
+        if (perfil.cuentasBasicas && perfil.cuentasBasicas > 0) {
+          const catCuentas = await client.query(`SELECT id FROM categories WHERE name = 'Cuentas Fijas' AND user_id IS NULL LIMIT 1`);
+          if (catCuentas.rows.length > 0) {
+            await client.query(
+              `INSERT INTO monthly_budgets (user_id, category_id, amount, month) VALUES ($1, $2, $3, $4)`,
+              [user.id, catCuentas.rows[0].id, perfil.cuentasBasicas, currentMonth]
+            );
+          }
+        }
+
+        if (perfil.gastos && perfil.gastos > 0) {
+          const catGastos = await client.query(`SELECT id FROM categories WHERE name = 'Otros Gastos' AND user_id IS NULL LIMIT 1`);
+          if (catGastos.rows.length > 0) {
+            await client.query(
+              `INSERT INTO monthly_budgets (user_id, category_id, amount, month) VALUES ($1, $2, $3, $4)`,
+              [user.id, catGastos.rows[0].id, perfil.gastos, currentMonth]
+            );
+          }
+        }
+
+        if (perfil.objetivosAhorro && perfil.objetivosAhorro > 0) {
+          await client.query(
+            `INSERT INTO goals (user_id, title, icon, target_amount, current_amount, status) VALUES ($1, $2, $3, $4, 0, 'active')`,
+            [user.id, 'Mi primera meta', '🎯', perfil.objetivosAhorro]
+          );
+        }
+
+        await client.query('COMMIT');
+      } catch (err) {
+        await client.query('ROLLBACK');
+        console.error('Error creando perfil financiero (Usuario creado igual):', err);
+        // Nota: No lanzamos AppError aquí para no interrumpir el registro si solo falla un presupuesto
+      } finally {
+        client.release();
+      }
+    }
+
+    // 5. Generamos tokens y retornamos
+    const tokens = generateTokens(user.id);
     await saveRefreshToken(user.id, tokens.refreshToken);
 
     return { user: stripPassword(user), tokens };

@@ -193,7 +193,7 @@ export default function PresupuestoSugeridoScreen() {
           </View>
         </View>
 
-        <TouchableOpacity style={styles_app.button} onPress={confirmarPresupuesto} disabled={guardando}>
+        <TouchableOpacity style={styles_app.button} onPress={finalizar} disabled={guardando}>
           {guardando
             ? <ActivityIndicator color="#fff" />
             : <Text style={styles_app.buttonText}>Confirmar presupuesto</Text>

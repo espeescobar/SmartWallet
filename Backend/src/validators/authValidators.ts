@@ -25,9 +25,9 @@ export const registerSchema = z.object({
     .regex(/[a-zA-Z]/, 'La contraseña debe contener al menos una letra')
     .regex(/[0-9]/,    'La contraseña debe contener al menos un número'),
 
+  // Lo hacemos opcional para que no bloquee el registro si el frontend no lo envía
   full_name: z
     .string({ error: 'El nombre es requerido' })
-    .min(1,   'El nombre es requerido')
     .min(2,   'El nombre debe tener al menos 2 caracteres')
     .max(100, 'El nombre no puede superar 100 caracteres')
     .transform(v => v.trim()),
@@ -37,6 +37,14 @@ export const registerSchema = z.object({
     .int('El ingreso mensual debe ser un número entero (CLP)')
     .min(0, 'El ingreso mensual no puede ser negativo')
     .optional(),
+
+  // ✨ AQUÍ AGREGAMOS EL PERFIL FINANCIERO ✨
+  perfil: z.object({
+    ingresos: z.number().optional(),
+    gastos: z.number().optional(),
+    cuentasBasicas: z.number().optional(),
+    objetivosAhorro: z.number().optional(),
+  }).optional(),
 });
 
 export const loginSchema = z.object({

@@ -72,10 +72,14 @@ export default function PerfilamientoScreen() {
         cuentasBasicas: parsePositiveAmount(valores.cuentasBasicas) ?? 0,
         objetivosAhorro: parsePositiveAmount(valores.objetivosAhorro) ?? 0,
       };
+      
+      // ¡SOLO NAVEGAMOS Y PASAMOS LOS DATOS!
       navigation.navigate('PresupuestoSugerido', {
         perfil,
         email: route.params?.email,
         password: route.params?.password,
+        // Agregamos el full_name si es que lo traías desde el registro anterior
+        fullName: route.params?.fullName, 
       });
     }
   };
@@ -87,20 +91,14 @@ export default function PerfilamientoScreen() {
 
   return (
     <SafeAreaView style={styles_app.safeArea}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView style={styles_app.container} keyboardShouldPersistTaps="handled">
           <Text style={styles_app.screenTitle}>Configura tu perfil</Text>
           <Text style={styles_app.subtitle}>Paso {paso + 1} de {PASOS.length}</Text>
 
           <View style={styles.progressContainer}>
             {PASOS.map((_, i) => (
-              <View
-                key={i}
-                style={[styles.progressDot, i <= paso && styles.progressDotActive]}
-              />
+              <View key={i} style={[styles.progressDot, i <= paso && styles.progressDotActive]} />
             ))}
           </View>
 
