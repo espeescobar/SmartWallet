@@ -38,13 +38,18 @@ export const registerSchema = z.object({
     .min(0, 'El ingreso mensual no puede ser negativo')
     .optional(),
 
-  // ✨ AQUÍ AGREGAMOS EL PERFIL FINANCIERO ✨
-  perfil: z.object({
-    ingresos: z.number().optional(),
-    gastos: z.number().optional(),
-    cuentasBasicas: z.number().optional(),
-    objetivosAhorro: z.number().optional(),
-  }).optional(),
+  // Borra "perfil: z.object({...}).optional()" y pega esto:
+  categorias: z.array(z.object({
+    nombre: z.string(),
+    icono: z.string().optional(),
+    monto: z.number()
+  })).optional(),
+
+  metas: z.array(z.object({
+    nombre: z.string(),
+    montoTotal: z.number(),
+    montoMensual: z.number()
+  })).optional(),
 });
 
 export const loginSchema = z.object({
@@ -77,6 +82,18 @@ export const updateMeSchema = z.object({
     .int('El ingreso mensual debe ser un número entero (CLP)')
     .min(0, 'El ingreso mensual no puede ser negativo')
     .optional(),
+  
+    categorias: z.array(z.object({
+      nombre: z.string(),
+      icono: z.string().optional(),
+      monto: z.number()
+    })).optional(),
+  
+    metas: z.array(z.object({
+      nombre: z.string(),
+      montoTotal: z.number(),
+      montoMensual: z.number()
+    })).optional(),
 });
 
 // Tipos inferidos — útiles para tipar req.body en los controllers

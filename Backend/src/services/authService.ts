@@ -38,10 +38,9 @@ function stripPassword(user: Awaited<ReturnType<typeof userRepository.findByEmai
 export const authService = {
 
   async register(data: RegisterDTO): Promise<{ user: UserPublic; tokens: AuthTokens }> {
-    // 1. Extraemos el perfil para manejarlo por separado
-    const { perfil, ...userData } = data;
+    // 1. Extraemos categorias y metas
+    const { categorias, metas, ...userData } = data;
     
-    // zod ya normalizó el email, pero lo reafirmamos por defensa
     const email = userData.email.toLowerCase().trim();
 
     const existing = await userRepository.findByEmail(email);
@@ -49,11 +48,11 @@ export const authService = {
 
     const password_hash = await bcrypt.hash(userData.password, SALT_ROUNDS);
     
-    // 2. Preparamos datos faltantes: nombre automático e ingresos
+    // 2. Preparamos datos faltantes
     const full_name = userData.full_name || email.split('@')[0];
-    const monthly_income = userData.monthly_income || perfil?.ingresos || 0;
+    const monthly_income = userData.monthly_income || 0;
 
-    // 3. Creamos al usuario usando tu repositorio perfecto
+    // 3. Creamos al usuario
     const user = await userRepository.create({ 
       ...userData, 
       email, 
@@ -63,8 +62,7 @@ export const authService = {
     });
 
     // 4. --- MAGIA DEL PERFILAMIENTO ---
-    // Usamos pool.connect() para asegurar que los presupuestos se creen correctamente
-    if (perfil) {
+    if (categorias || metas) {
       const client = await pool.connect();
       try {
         await client.query('BEGIN');
@@ -72,38 +70,50 @@ export const authService = {
         const date = new Date();
         const currentMonth = new Date(date.getFullYear(), date.getMonth(), 1).toISOString().slice(0, 10);
 
-        if (perfil.cuentasBasicas && perfil.cuentasBasicas > 0) {
-          const catCuentas = await client.query(`SELECT id FROM categories WHERE name = 'Cuentas Fijas' AND user_id IS NULL LIMIT 1`);
-          if (catCuentas.rows.length > 0) {
-            await client.query(
-              `INSERT INTO monthly_budgets (user_id, category_id, amount, month) VALUES ($1, $2, $3, $4)`,
-              [user.id, catCuentas.rows[0].id, perfil.cuentasBasicas, currentMonth]
-            );
+        // Guardar cada categoría y su presupuesto
+        if (categorias && categorias.length > 0) {
+          for (const cat of categorias) {
+            if (cat.monto > 0) {
+              const catCheck = await client.query(
+                `SELECT id FROM categories WHERE name = $1 AND (user_id IS NULL OR user_id = $2) LIMIT 1`,
+                [cat.nombre, user.id]
+              );
+              
+              let catId;
+              if (catCheck.rows.length > 0) {
+                catId = catCheck.rows[0].id;
+              } else {
+                const newCat = await client.query(
+                  `INSERT INTO categories (user_id, name, icon, type) VALUES ($1, $2, $3, 'expense') RETURNING id`,
+                  [user.id, cat.nombre, cat.icono || '🏷️']
+                );
+                catId = newCat.rows[0].id;
+              }
+
+              await client.query(
+                `INSERT INTO monthly_budgets (user_id, category_id, amount, month) VALUES ($1, $2, $3, $4)`,
+                [user.id, catId, cat.monto, currentMonth]
+              );
+            }
           }
         }
 
-        if (perfil.gastos && perfil.gastos > 0) {
-          const catGastos = await client.query(`SELECT id FROM categories WHERE name = 'Otros Gastos' AND user_id IS NULL LIMIT 1`);
-          if (catGastos.rows.length > 0) {
-            await client.query(
-              `INSERT INTO monthly_budgets (user_id, category_id, amount, month) VALUES ($1, $2, $3, $4)`,
-              [user.id, catGastos.rows[0].id, perfil.gastos, currentMonth]
-            );
+        // Guardar cada meta de ahorro
+        if (metas && metas.length > 0) {
+          for (const meta of metas) {
+            if (meta.montoTotal > 0) {
+              await client.query(
+                `INSERT INTO goals (user_id, title, icon, target_amount, current_amount, status) VALUES ($1, $2, $3, $4, 0, 'active')`,
+                [user.id, meta.nombre, '🎯', meta.montoTotal]
+              );
+            }
           }
-        }
-
-        if (perfil.objetivosAhorro && perfil.objetivosAhorro > 0) {
-          await client.query(
-            `INSERT INTO goals (user_id, title, icon, target_amount, current_amount, status) VALUES ($1, $2, $3, $4, 0, 'active')`,
-            [user.id, 'Mi primera meta', '🎯', perfil.objetivosAhorro]
-          );
         }
 
         await client.query('COMMIT');
       } catch (err) {
         await client.query('ROLLBACK');
-        console.error('Error creando perfil financiero (Usuario creado igual):', err);
-        // Nota: No lanzamos AppError aquí para no interrumpir el registro si solo falla un presupuesto
+        console.error('Error creando perfil financiero detallado:', err);
       } finally {
         client.release();
       }
@@ -120,9 +130,8 @@ export const authService = {
     const email = data.email.toLowerCase().trim();
     const user  = await userRepository.findByEmail(email);
 
-    // Mismo error para email no registrado y contraseña incorrecta (evita user enumeration)
     if (!user) {
-      await bcrypt.hash(data.password, SALT_ROUNDS); // timing-safe dummy hash
+      await bcrypt.hash(data.password, SALT_ROUNDS); 
       throw new AppError(401, 'Credenciales inválidas');
     }
 
@@ -157,7 +166,6 @@ export const authService = {
 
     if (rows.length === 0) throw new AppError(401, 'Sesión no encontrada o expirada');
 
-    // Buscar coincidencia de hash de forma secuencial para evitar overhead masivo
     let matchedId: string | null = null;
     for (const row of rows) {
       const ok = await bcrypt.compare(token, row.token_hash);
@@ -166,7 +174,6 @@ export const authService = {
 
     if (!matchedId) throw new AppError(401, 'Refresh token no reconocido');
 
-    // Revocar el token usado antes de emitir uno nuevo (rotación)
     await pool.query('UPDATE refresh_tokens SET revoked_at = NOW() WHERE id = $1', [matchedId]);
 
     const newTokens = generateTokens(payload.sub);
@@ -175,10 +182,60 @@ export const authService = {
   },
 
   async logout(userId: string): Promise<void> {
-    // Revocar todas las sesiones activas del usuario
     await pool.query(
       'UPDATE refresh_tokens SET revoked_at = NOW() WHERE user_id = $1 AND revoked_at IS NULL',
       [userId],
     );
+  },
+
+  async saveFinancialProfile(userId: string, categorias?: any[], metas?: any[]): Promise<void> {
+    if (!categorias && !metas) return;
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const currentMonth = new Date().toISOString().slice(0, 10);
+
+      if (categorias && categorias.length > 0) {
+        for (const cat of categorias) {
+          if (cat.monto > 0) {
+            const catCheck = await client.query(
+              `SELECT id FROM categories WHERE name = $1 AND (user_id IS NULL OR user_id = $2) LIMIT 1`,
+              [cat.nombre, userId]
+            );
+            let catId;
+            if (catCheck.rows.length > 0) {
+              catId = catCheck.rows[0].id;
+            } else {
+              const newCat = await client.query(
+                `INSERT INTO categories (user_id, name, icon, type) VALUES ($1, $2, $3, 'expense') RETURNING id`,
+                [userId, cat.nombre, cat.icono || '🏷️']
+              );
+              catId = newCat.rows[0].id;
+            }
+            await client.query(
+              `INSERT INTO monthly_budgets (user_id, category_id, amount, month) VALUES ($1, $2, $3, $4)`,
+              [userId, catId, cat.monto, currentMonth]
+            );
+          }
+        }
+      }
+
+      if (metas && metas.length > 0) {
+        for (const meta of metas) {
+          if (meta.montoTotal > 0) {
+            await client.query(
+              `INSERT INTO goals (user_id, title, icon, target_amount, current_amount, status) VALUES ($1, $2, $3, $4, 0, 'active')`,
+              [userId, meta.nombre, '🎯', meta.montoTotal]
+            );
+          }
+        }
+      }
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      console.error('Error guardando perfil financiero:', err);
+    } finally {
+      client.release();
+    }
   },
 };

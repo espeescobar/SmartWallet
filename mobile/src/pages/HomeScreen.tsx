@@ -15,6 +15,8 @@ import {
   loadUserProfile, calcularPresupuestoTotal, evaluarPresupuesto,
   filtrarUltimaSemana, sumarGastos, BudgetStatus,
 } from '../utils/budgetStatus';
+import { useFocusEffect } from '@react-navigation/native';
+
 
 interface Transaction {
   id: string;
@@ -55,6 +57,7 @@ export default function HomeScreen() {
   const navigation = useNavigation();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [metas, setMetas] = useState<any[]>([]); // ✨ Estado para tus metas
   const [categoriaFiltro, setCategoriaFiltro] = useState<string | null>(null);
   const [saldo, setSaldo] = useState<number | null>(null);
   const [budgetStatus, setBudgetStatus] = useState<BudgetStatus | null>(null);
@@ -64,32 +67,65 @@ export default function HomeScreen() {
   const load = useCallback(async () => {
     try {
       const month = new Date().toISOString().slice(0, 7);
-      const [txRes, dashRes, catRes, profile] = await Promise.all([
-        api.get(`/transactions?type=expense&limit=100&month=${month}`),
-        api.get(`/dashboard/summary?month=${month}`),
-        api.get('/dashboard/categories?type=expense'),
-        loadUserProfile(),
-      ]);
+      
+      // Cargamos el perfil guardado en la memoria del teléfono
+      const profile = await loadUserProfile();
+      
+      let txData = [];
+      let dashData: any = { balance: 0, total_expenses: 0, total_income: 0 };
+      let catData: Category[] = [];
 
-      const semana = filtrarUltimaSemana(txRes.data as Transaction[]);
+      try {
+        const [txRes, dashRes, catRes] = await Promise.all([
+          api.get(`/transactions?type=expense&limit=100&month=${month}`),
+          api.get(`/dashboard/summary?month=${month}`),
+          api.get('/dashboard/categories?type=expense'),
+        ]);
+        txData = txRes.data;
+        dashData = dashRes.data;
+        catData = catRes.data;
+      } catch (e) {
+        console.log("Aviso: Algunas rutas del backend aún no están listas, usando datos locales.");
+      }
+
+      const semana = filtrarUltimaSemana(txData as Transaction[]);
       setTransactions(semana);
-      setCategories(catRes.data);
-      const expenses = dashRes.data.total_expenses ?? 0;
-      const income = dashRes.data.total_income ?? 0;
-      setSaldo(dashRes.data.balance);
+      setSaldo(dashData.balance);
 
-      const ahorroMensual = profile?.perfil?.objetivosAhorro ?? profile?.metas?.reduce((s, m) => s + m.montoMensual, 0) ?? 0;
-      const presupuesto = calcularPresupuestoTotal(profile, user?.monthly_income ?? 0);
+      // ✨ MAGIA: Si el backend no manda categorías, usamos las que el usuario guardó en el formulario!
+      if ((!catData || catData.length === 0) && profile?.categorias) {
+        catData = profile.categorias.map((c: any, index: number) => ({
+          id: `cat-local-${index}`,
+          name: c.nombre,
+          icon: c.icono || '🏷️'
+        }));
+      }
+      setCategories(catData);
+
+      // ✨ MAGIA: Cargamos las metas que el usuario guardó en el formulario
+      if (profile?.metas) {
+        setMetas(profile.metas);
+      }
+
+      const expenses = dashData.total_expenses ?? 0;
+      const income = dashData.total_income ?? profile?.perfil?.ingresos ?? 0;
+      const ahorroMensual = profile?.perfil?.objetivosAhorro ?? profile?.metas?.reduce((s: number, m: any) => s + m.montoMensual, 0) ?? 0;
+      const presupuesto = calcularPresupuestoTotal(profile, user?.monthly_income ?? income);
+      
       setBudgetStatus(evaluarPresupuesto(expenses, income, presupuesto, ahorroMensual));
-    } catch {
-      // mantiene estado anterior
+    } catch (err) {
+      console.log("Error general cargando Home:", err);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   }, [user?.monthly_income]);
 
-  useEffect(() => { load(); }, [load]);
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load])
+  );
 
   const onRefresh = () => { setRefreshing(true); load(); };
 
@@ -129,14 +165,16 @@ export default function HomeScreen() {
           <Text style={styles.balanceTitle}>Saldo del mes:</Text>
           {loading
             ? <ActivityIndicator />
-            : <Text style={styles.balanceAmount}>${saldo.toLocaleString('es-CL')}</Text>
+            : <Text style={styles.balanceAmount}>${(saldo || 0).toLocaleString('es-CL')}</Text>
           }
         </View>
+
+      
 
         <Text style={styles_app.sectionTitle}>Anotar un gasto</Text>
         <FormGastos onSaved={load} />
 
-        <Text style={styles_app.sectionTitle}>Gastos recientes</Text>
+        <Text style={styles_app.sectionTitle}>Tus Categorías</Text>
 
         <ScrollView
           horizontal
@@ -148,9 +186,7 @@ export default function HomeScreen() {
             style={[styles.filterChip, !categoriaFiltro && styles.filterChipActive]}
             onPress={() => setCategoriaFiltro(null)}
           >
-            <Text style={[styles.filterText, !categoriaFiltro && styles.filterTextActive]}>
-              Todas
-            </Text>
+            <Text style={[styles.filterText, !categoriaFiltro && styles.filterTextActive]}>Todas</Text>
           </TouchableOpacity>
           {categories.map((cat) => (
             <TouchableOpacity
@@ -165,6 +201,8 @@ export default function HomeScreen() {
           ))}
         </ScrollView>
 
+        <Text style={styles_app.sectionTitle}>Gastos recientes</Text>
+
         {loading
           ? <ActivityIndicator style={{ marginTop: 20 }} />
           : (
@@ -173,13 +211,8 @@ export default function HomeScreen() {
               ? <Text style={styles.emptyText}>Sin gastos en la última semana{categoriaFiltro ? ' para esta categoría' : ''}.</Text>
               : transaccionesFiltradas.map((tx) => {
                 
-                // 1. Buscamos la categoría de este gasto en la lista que ya tenemos guardada en el Home
                 const catDelGasto = categories.find(c => c.id === tx.category_id);
-                
-                // 2. Si el backend manda el ícono lo usamos, si no, usamos el de la categoría encontrada, o uno por defecto
                 const icono = tx.category_icon || catDelGasto?.icon || '🏷️';
-                
-                // 3. Formateamos el título (Si no hay descripción, muestra el nombre de la categoría)
                 const nombreCategoria = tx.category_name || catDelGasto?.name || 'Gasto';
                 const tituloGasto = tx.description ? tx.description : nombreCategoria;
 
@@ -190,16 +223,12 @@ export default function HomeScreen() {
                         <Text style={styles.iconText}>{icono}</Text>
                       </View>
                       <View style={styles.expenseInfo}>
-                        <Text style={styles.expenseDescription}>
-                          {tituloGasto}
-                        </Text>
+                        <Text style={styles.expenseDescription}>{tituloGasto}</Text>
                         <Text style={styles.expenseRelative}>{formatRelativeDate(tx.transaction_date)}</Text>
                         <Text style={styles.expenseDateTiny}>{formatFullDate(tx.transaction_date)}</Text>
                       </View>
                     </View>
-                    <Text style={styles.expenseAmount}>
-                      -${tx.amount.toLocaleString('es-CL')}
-                    </Text>
+                    <Text style={styles.expenseAmount}>-${tx.amount.toLocaleString('es-CL')}</Text>
                   </View>
                 );
               })

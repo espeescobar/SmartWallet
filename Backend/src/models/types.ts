@@ -17,14 +17,19 @@ export type UserPublic = Omit<User, 'password_hash'>;
 export interface RegisterDTO {
   email: string;
   password: string;
-  full_name: string; 
+  full_name: string;
   monthly_income?: number;
-  perfil?: {
-    ingresos?: number;
-    gastos?: number;
-    cuentasBasicas?: number;
-    objetivosAhorro?: number;
-  };
+  
+  categorias?: Array<{
+    nombre: string;
+    icono?: string;
+    monto: number;
+  }>;
+  metas?: Array<{
+    nombre: string;
+    montoTotal: number;
+    montoMensual: number;
+  }>;
 }
 
 export interface LoginDTO {

@@ -86,19 +86,28 @@ export default function PresupuestoSugeridoScreen() {
 
   const finalizar = async () => {
     setGuardando(true);
+    
     try {
-      if (email && password) {
-        await login(email, password);
-      }
+      console.log("1. Iniciando sesión con la cuenta ya creada...");
+      await login(email, password); 
+
+      console.log("2. Guardando presupuesto, categorías y metas...");
+      // ¡AQUÍ ESTÁ LA CLAVE! Usamos PATCH /auth/me en lugar de register
+      await api.patch('/auth/me', {
+        monthly_income: ingresoTotal, 
+        categorias: categorias.map(c => ({ nombre: c.nombre, icono: c.icono, monto: c.monto })),
+        metas: metas.map(m => ({ nombre: m.nombre, montoTotal: m.montoTotal, montoMensual: m.montoMensual }))
+      });
+
+      console.log("3. Todo guardado. Viajando al Dashboard...");
       await AsyncStorage.setItem('profiling_complete', 'true');
       await AsyncStorage.setItem('user_profile', JSON.stringify({ perfil, categorias, metas }));
-      if (ingresoTotal > 0) {
-        await api.patch('/auth/me', { monthly_income: ingresoTotal }).catch(() => {});
-      }
+      
       navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
-    } catch {
-      await AsyncStorage.setItem('profiling_complete', 'true');
-      navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
+
+    } catch (error: any) {
+      console.error("❌ Error en finalizar:", error.response?.data || error.message);
+      Alert.alert("Error", "Hubo un problema al guardar tu presupuesto.");
     } finally {
       setGuardando(false);
     }

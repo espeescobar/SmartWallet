@@ -47,8 +47,18 @@ export async function me(req: Request, res: Response, next: NextFunction): Promi
 export async function updateMe(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const body = req.body as UpdateMeBody;
-    const user = await userRepository.update((req as AuthRequest).userId, body);
+    const userId = (req as AuthRequest).userId;
+    
+    // 1. Separamos los datos de presupuesto de los datos normales del usuario
+    const { categorias, metas, ...userUpdates } = body;
+
+    // 2. Actualizamos el ingreso mensual y nombre en la tabla users
+    const user = await userRepository.update(userId, userUpdates);
     if (!user) { res.status(404).json({ error: 'Usuario no encontrado' }); return; }
+
+    // 3. ✨ LLAMAMOS A LA MAGIA DEL PRESUPUESTO ✨
+    await authService.saveFinancialProfile(userId, categorias, metas);
+
     const { password_hash: _, ...userPublic } = user;
     res.json(userPublic);
   } catch (err) { next(err); }

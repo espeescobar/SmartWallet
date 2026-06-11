@@ -139,7 +139,7 @@ export default function DashboardScreen() {
         name: newName.trim(),
         type: 'expense',
         budget_amount: parsedBudget,
-        icon: selectedEmoji, // <-- Corregido para usar el emoji seleccionado
+        icon: selectedEmoji, // 
         color: '#005AD6',
       });
       setModalVisible(false);
@@ -159,8 +159,6 @@ export default function DashboardScreen() {
     color: cat.category_color || CHART_COLORS[i % CHART_COLORS.length],
   }));
 
-  // --- AQUÍ ESTÁ LA MAGIA QUE FALTABA ---
-  // Aplanamos todas las transacciones de todas las categorías en un solo arreglo
   const allTransactions = useMemo(() => {
     if (!data || !data.categories) return [];
     
