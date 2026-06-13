@@ -10,7 +10,7 @@ interface Props {
 
 function barColor(level: BudgetStatus['level']): string {
   if (level === 'danger' || level === 'savings_blocked') return Colors.error;
-  if (level === 'warning') return '#FF9800';
+  if (level === 'warning') return '#FF3D71';
   return Colors.azul;
 }
 

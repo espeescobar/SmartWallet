@@ -59,7 +59,7 @@ export const styles = StyleSheet.create({
         fontSize: 14,
         fontFamily: Typography.main,
         fontWeight: '600',
-        color: '#E65100',
+        color: '#FF3D71',
         lineHeight: 20,
         marginBottom: 10,
     },

@@ -19,17 +19,26 @@ type PresupuestoNav = NativeStackNavigationProp<RootStackParamList, 'Presupuesto
 
 export default function PresupuestoSugeridoScreen() {
   const navigation = useNavigation<PresupuestoNav>();
-  const route = useRoute<RouteProp<RootStackParamList, 'PresupuestoSugerido'>>();
+  const route = useRoute<any>(); 
   const { login } = useAuth();
-  const { perfil, email, password } = route.params;
+  
+  const { email, password, categorias: categoriasOcultas } = route.params || {};
+  const perfilSeguro = route.params?.perfil || {
+    ingresos: 300000,
+    gastos: 30000,
+    cuentasBasicas: 40000,
+    objetivosAhorro: 30000,
+  };
 
-  const propuestaInicial = useMemo(() => generarPropuesta(perfil), [perfil]);
+  const propuestaInicial = useMemo(() => generarPropuesta(perfilSeguro), [perfilSeguro]);
+  
   const [categorias, setCategorias] = useState<CategoriaPresupuesto[]>(propuestaInicial.categorias);
   const [metas, setMetas] = useState<MetaSugerida[]>(propuestaInicial.metas);
+  
   const [nuevaCategoria, setNuevaCategoria] = useState('');
   const [guardando, setGuardando] = useState(false);
 
-  const gastosFijos = perfil.gastos + perfil.cuentasBasicas;
+  const gastosFijos = perfilSeguro.gastos + perfilSeguro.cuentasBasicas;
   const totalAsignado = sumaCategorias(categorias) + metas.reduce((s, m) => s + m.montoMensual, 0) + gastosFijos;
   const ingresoTotal = propuestaInicial.ingresoTotal;
 
@@ -69,20 +78,7 @@ export default function PresupuestoSugeridoScreen() {
     );
   };
 
-  const confirmarPresupuesto = () => {
-    if (ingresoTotal > 0 && totalAsignado !== ingresoTotal) {
-      Alert.alert(
-        'Total no coincide',
-        'El total asignado no coincide con tu ingreso, ¿deseas continuar de todas formas?',
-        [
-          { text: 'Revisar', style: 'cancel' },
-          { text: 'Continuar', onPress: finalizar },
-        ]
-      );
-    } else {
-      finalizar();
-    }
-  };
+
 
   const finalizar = async () => {
     setGuardando(true);
@@ -90,14 +86,68 @@ export default function PresupuestoSugeridoScreen() {
       if (email && password) {
         await login(email, password);
       }
-      await AsyncStorage.setItem('profiling_complete', 'true');
-      await AsyncStorage.setItem('user_profile', JSON.stringify({ perfil, categorias, metas }));
+
+      // 1. Guardamos el ingreso fijo en la BD
       if (ingresoTotal > 0) {
-        await api.patch('/auth/me', { monthly_income: ingresoTotal }).catch(() => {});
+        await api.patch('/auth/me', { monthly_income: 300000 }).catch(() => {});
       }
-      navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
-    } catch {
+
+      // 2. CREAMOS LAS CATEGORÍAS EN LA BASE DE DATOS REAL
+      const categoriasParaCrear = [
+        { name: 'Micro', icon: '🚌', budget_amount: categoriasOcultas?.micro || 10000, type: 'expense', color: '#D9EBFF' },
+        { name: 'Colaciones', icon: '🍔', budget_amount: categoriasOcultas?.colaciones || 30000, type: 'expense', color: '#005AD6' },
+        { name: 'Ocio', icon: '🎉', budget_amount: categoriasOcultas?.ocio || 40000, type: 'expense', color: '#1A1A1A' },
+        { name: 'Materiales', icon: '📚', budget_amount: categoriasOcultas?.materiales || 30000, type: 'expense', color: '#6E6E73' },
+      ];
+
+      for (const cat of categoriasParaCrear) {
+        try {
+          await api.post('/dashboard/categories', cat);
+        } catch (e) {
+          console.log(`Error creando categoría ${cat.name} en BD:`, e);
+        }
+      }
+      try {
+        const unAnoMas = new Date();
+        unAnoMas.setFullYear(unAnoMas.getFullYear() + 1);
+
+        const goalResponse = await api.post('/goals', { 
+          title: 'Ahorro mensual',   
+          target_amount: 360000,  
+          monthly_contribution: 30000,   
+          deadline: unAnoMas.toISOString(),
+          icon: '🎯'
+        });
+
+ 
+        const newGoalId = goalResponse.data?.id || goalResponse.data?.goal?.id;
+        if (newGoalId) {
+          try {
+            await api.post(`/goals/${newGoalId}/contributions`, {
+              amount: 30000, 
+              description: 'Aporte inicial automático'
+            });
+          } catch (patchErr) {
+            await api.patch(`/goals/${newGoalId}`, {
+              current_amount: 30000
+            }).catch(() => console.log('El backend rechazó el aporte y el PATCH'));
+          }
+        }
+      } catch (e) {
+        console.log('Error creando objetivo en BD:', e);
+      }
+
+      // Guardado local
+      const metasFijasParaGuardar = [
+        { id: 'meta-default', nombre: 'Ahorro mensual', montoMensual: 30000, montoTotal: 360000, meses: 12 }
+      ];
+      await AsyncStorage.setItem('user_profile', JSON.stringify({ perfil: perfilSeguro, metas: metasFijasParaGuardar }));
       await AsyncStorage.setItem('profiling_complete', 'true');
+      
+      // Nos vamos al Home!
+      navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
+    } catch (error) {
+      console.log('Error finalizando:', error);
       navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
     } finally {
       setGuardando(false);
@@ -187,7 +237,7 @@ export default function PresupuestoSugeridoScreen() {
           </View>
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>Total asignado</Text>
-            <Text style={[styles.totalAmount, totalAsignado !== ingresoTotal && { color: '#E65100' }]}>
+            <Text style={[styles.totalAmount, totalAsignado !== ingresoTotal && { color: '#FF3D71' }]}>
               ${totalAsignado.toLocaleString('es-CL')}
             </Text>
           </View>

@@ -57,7 +57,7 @@ export const styles = StyleSheet.create({
     borderColor: '#FFE0B2',
   },
   warningText: {
-    color: '#E65100',
+    color: '#FF3D71',
     fontFamily: Typography.main,
     fontSize: 14,
     lineHeight: 20,

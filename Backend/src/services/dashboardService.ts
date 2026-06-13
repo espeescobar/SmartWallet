@@ -74,20 +74,29 @@ export const dashboardService = {
     };
   }, 
   async getCategories(userId: string, type?: string) {
-    let query = `
-      SELECT id, name, icon, color 
-      FROM categories 
-      WHERE user_id = $1
-    `;
     const params: any[] = [userId];
+    let query = `
+      SELECT 
+        c.id, 
+        c.name, 
+        c.icon, 
+        c.color,
+        mb.amount AS budget_amount
+      FROM categories c
+      LEFT JOIN monthly_budgets mb 
+        ON mb.category_id = c.id 
+        AND mb.user_id = $1
+        AND mb.month = DATE_TRUNC('month', CURRENT_DATE)::DATE
+      WHERE c.user_id = $1
+    `;
 
-    // Si enviamos un tipo específico (como 'expense' desde FormGastos), filtramos por eso
+    // Si enviamos un tipo específico (como 'expense'), filtramos por eso
     if (type) {
-      query += ` AND type = $2`;
+      query += ` AND c.type = $2`;
       params.push(type);
     }
 
-    query += ` ORDER BY name ASC`;
+    query += ` ORDER BY c.name ASC`;
 
     const { rows } = await pool.query(query, params);
     return rows;

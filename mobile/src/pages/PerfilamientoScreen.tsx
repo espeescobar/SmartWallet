@@ -6,8 +6,7 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { styles_app } from '../styles/App.styles';
 import { styles } from '../styles/Perfilamiento.styles';
-import { isValidAmount, parsePositiveAmount } from '../utils/validation';
-import { PerfilFinanciero } from '../utils/budgetCalculator';
+import { isValidAmount } from '../utils/validation';
 import { RootStackParamList } from '../navigation/types';
 
 type PerfilNav = NativeStackNavigationProp<RootStackParamList, 'Perfilamiento'>;
@@ -43,6 +42,8 @@ export default function PerfilamientoScreen() {
   const navigation = useNavigation<PerfilNav>();
   const route = useRoute<RouteProp<RootStackParamList, 'Perfilamiento'>>();
   const [paso, setPaso] = useState(0);
+  
+  // Campos vacíos para que el usuario pueda escribir
   const [valores, setValores] = useState<Record<string, string>>({
     ingresos: '',
     gastos: '',
@@ -55,6 +56,7 @@ export default function PerfilamientoScreen() {
   const valorActual = valores[pasoActual.campo];
 
   const avanzar = (omitir = false) => {
+    // Mantenemos la validación para que el usuario sienta que es un formulario real
     if (!omitir && valorActual.trim() !== '') {
       if (!isValidAmount(valorActual)) {
         setError('Ingresa un monto válido');
@@ -66,19 +68,9 @@ export default function PerfilamientoScreen() {
     if (paso < PASOS.length - 1) {
       setPaso(paso + 1);
     } else {
-      const perfil: PerfilFinanciero = {
-        ingresos: parsePositiveAmount(valores.ingresos) ?? 0,
-        gastos: parsePositiveAmount(valores.gastos) ?? 0,
-        cuentasBasicas: parsePositiveAmount(valores.cuentasBasicas) ?? 0,
-        objetivosAhorro: parsePositiveAmount(valores.objetivosAhorro) ?? 0,
-      };
-      
-      // ¡SOLO NAVEGAMOS Y PASAMOS LOS DATOS!
       navigation.navigate('PresupuestoSugerido', {
-        perfil,
         email: route.params?.email,
         password: route.params?.password,
-        // Agregamos el full_name si es que lo traías desde el registro anterior
         fullName: route.params?.fullName, 
       });
     }

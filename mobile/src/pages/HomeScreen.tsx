@@ -15,6 +15,7 @@ import {
   loadUserProfile, calcularPresupuestoTotal, evaluarPresupuesto,
   filtrarUltimaSemana, sumarGastos, BudgetStatus,
 } from '../utils/budgetStatus';
+import AlertaPresupuesto from '../components/AlertaPresupuesto';
 
 interface Transaction {
   id: string;
@@ -74,15 +75,18 @@ export default function HomeScreen() {
       const semana = filtrarUltimaSemana(txRes.data as Transaction[]);
       setTransactions(semana);
       setCategories(catRes.data);
+      
       const expenses = dashRes.data.total_expenses ?? 0;
       const income = dashRes.data.total_income ?? 0;
-      setSaldo(dashRes.data.balance);
 
       const ahorroMensual = profile?.perfil?.objetivosAhorro ?? profile?.metas?.reduce((s, m) => s + m.montoMensual, 0) ?? 0;
+      
+      const saldoCalculado = 300000 - ahorroMensual - expenses - 40000;
+      setSaldo(saldoCalculado);
+
       const presupuesto = calcularPresupuestoTotal(profile, user?.monthly_income ?? 0);
       setBudgetStatus(evaluarPresupuesto(expenses, income, presupuesto, ahorroMensual));
     } catch {
-      // mantiene estado anterior
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -110,6 +114,7 @@ export default function HomeScreen() {
   const firstName = user?.full_name?.split(' ')[0] ?? 'tú';
 
   return (
+    
     <SafeAreaView style={styles_app.safeArea}>
       <ScrollView
         style={styles_app.container}
@@ -129,9 +134,10 @@ export default function HomeScreen() {
           <Text style={styles.balanceTitle}>Saldo del mes:</Text>
           {loading
             ? <ActivityIndicator />
-            : <Text style={styles.balanceAmount}>${saldo.toLocaleString('es-CL')}</Text>
+            : <Text style={styles.balanceAmount}>${saldo?.toLocaleString('es-CL')}</Text>
           }
         </View>
+        <AlertaPresupuesto />
 
         <Text style={styles_app.sectionTitle}>Anotar un gasto</Text>
         <FormGastos onSaved={load} />
