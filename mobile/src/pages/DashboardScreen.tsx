@@ -316,7 +316,81 @@ export default function DashboardScreen() {
         <View style={dashStyles.bottomPadding} />
       </ScrollView>
 
-      {/* Modal de Crear Categoría... (se mantiene igual, omitido por brevedad pero tu código lo tiene) */}
+      <Modal visible={modalVisible} animationType="slide" transparent>
+        <View style={styles_app.overlay}>
+          <View style={styles_app.modalContainer}>
+            <Text style={styles_app.modalTitle}>Nueva Categoría</Text>
+            
+            {/* 👇 Usando tu estilo oficial 'label' */}
+            <Text style={styles_app.label}>Elige un ícono:</Text>
+            
+            <View style={{ height: 60, marginBottom: 15 }}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                {EMOJI_LIST.map(emoji => {
+                  const isSelected = selectedEmoji === emoji;
+                  return (
+                    <TouchableOpacity
+                      key={emoji}
+                      onPress={() => setSelectedEmoji(emoji)}
+                      style={{
+                        padding: 10,
+                        marginRight: 8,
+                        borderRadius: 12,
+                        // 👇 Usando tus Colors oficiales para la selección
+                        borderWidth: isSelected ? 2 : 1,
+                        borderColor: isSelected ? Colors.azul : Colors.borde,
+                        backgroundColor: isSelected ? Colors.celeste : Colors.fondo,
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                    >
+                      <Text style={{ fontSize: 24 }}>{emoji}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+
+            <Text style={styles_app.label}>Nombre de la categoría</Text>
+            <TextInput
+              style={styles_app.input}
+              placeholder="Ej: Supermercado"
+              placeholderTextColor={Colors.textoSuave}
+              value={newName}
+              onChangeText={setNewName}
+            />
+
+            <Text style={styles_app.label}>Gasto mensual estimado (CLP)</Text>
+            <TextInput
+              style={styles_app.input}
+              placeholder="Ej: 50000"
+              placeholderTextColor={Colors.textoSuave}
+              keyboardType="numeric"
+              value={newBudget}
+              onChangeText={setNewBudget}
+            />
+            
+            <TouchableOpacity style={styles_app.button} onPress={handleCreateCategory} disabled={saving}>
+              {saving
+                ? <ActivityIndicator color={Colors.blanco} />
+                : <Text style={styles_app.buttonText}>Guardar</Text>
+              }
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              onPress={() => { 
+                setModalVisible(false); 
+                setNewName(''); 
+                setNewBudget(''); 
+                setSelectedEmoji('🎯'); 
+              }}
+              style={styles_app.cancelButton}
+            >
+              <Text style={styles_app.cancelText}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

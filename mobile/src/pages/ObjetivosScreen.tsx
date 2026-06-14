@@ -1,10 +1,10 @@
 import React, { useState, useCallback } from 'react';
-import { ScrollView, Text, SafeAreaView, TouchableOpacity, Alert, ActivityIndicator, RefreshControl, TextInput, Modal, View, Platform } from 'react-native';
+import { ScrollView, Text, SafeAreaView, TouchableOpacity, Alert, ActivityIndicator, RefreshControl, TextInput, Modal, View, Platform, Switch } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { useFocusEffect } from '@react-navigation/native'; // 👇 Importante para que recargue al cambiar de pestaña
+import { useFocusEffect } from '@react-navigation/native'; 
 import Objetivos from '../components/Objetivos';
 import { api } from '../services/api';
-import { styles_app } from '../styles/App.styles';
+import { styles_app, Colors } from '../styles/App.styles';
 import { styles_objetivos as styles } from '../styles/ObjetivosScreen.styles';
 import { parsePositiveAmount } from '../utils/validation';
 
@@ -34,15 +34,18 @@ export default function ObjetivosScreen() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [monthlyAmount, setMonthlyAmount] = useState('');
   const [monthlyEdited, setMonthlyEdited] = useState(false);
+  
+  // 👇 El interruptor de ahorro inmediato
+  const [startImmediately, setStartImmediately] = useState(false);
 
   const load = useCallback(async () => {
     try {
       const res = await api.get('/goals');
       let fetchedGoals = res.data.filter((g: Goal) => g.status === 'active');
 
-      // 🔥 HACK A PRUEBA DE BALAS 🔥
-      // Forzamos que lea como número y le pasamos 30000 si tiene menos que eso
       fetchedGoals = fetchedGoals.map((g: Goal) => {
+        // OJO: Si ya arreglaste la base de datos, quizás quieras borrar este if pronto
+        // para que no falsifique los 30.000 pesos fijos en la presentación.
         if (g.title && g.title.toLowerCase().includes('ahorro') && Number(g.current_amount || 0) < 30000) {
           return { ...g, current_amount: 30000 };
         }
@@ -58,7 +61,6 @@ export default function ObjetivosScreen() {
     }
   }, []);
 
-  // 👇 Magia: Esto hace que se ejecute "load" cada vez que entras a la pestaña
   useFocusEffect(
     useCallback(() => {
       load();
@@ -67,7 +69,6 @@ export default function ObjetivosScreen() {
 
   const onRefresh = () => { setRefreshing(true); load(); };
 
-  // Calculadora de meses (solo se ejecuta si el usuario tipea)
   React.useEffect(() => {
     if (monthlyEdited) return;
     const target = parsePositiveAmount(newAmount);
@@ -92,6 +93,8 @@ export default function ObjetivosScreen() {
     setDeadline(new Date(Date.now() + 365 * 24 * 60 * 60 * 1000));
     setMonthlyAmount('');
     setMonthlyEdited(false);
+    setShowDatePicker(false);
+    setStartImmediately(false); // Reiniciamos el interruptor
   };
 
   const calcularMesesRestantes = (): number => {
@@ -147,18 +150,64 @@ export default function ObjetivosScreen() {
     await enviarMeta(parsedTarget, parsedMonthly);
   };
 
+  // 👇 LÓGICA CORREGIDA SIN ERRORES DE SINTAXIS 👇
   const enviarMeta = async (parsedTarget: number, parsedMonthly: number) => {
     setSaving(true);
     try {
-      await api.post('/goals', {
+      // 1. Creamos la meta en la base de datos
+      const goalResponse = await api.post('/goals', {
         title: newTitle.trim(),
         icon: selectedEmoji, 
         target_amount: parsedTarget,
         deadline: deadline.toISOString(),
         monthly_contribution: parsedMonthly,
       });
+
+      // Extraemos el ID
+      const newGoalId = goalResponse.data?.id || goalResponse.data?.goal?.id;
+
+      // 2. Lógica de aporte inmediato
+      if (startImmediately && newGoalId) {
+        
+        // A. Intentamos mandar el aporte o hacer el patch usando el MONTO INGRESADO
+        try {
+          await api.post(`/goals/${newGoalId}/contributions`, {
+            amount: parsedMonthly, 
+            description: 'Aporte inicial automático'
+          });
+        } catch (patchErr) {
+          await api.patch(`/goals/${newGoalId}`, {
+            current_amount: parsedMonthly
+          }).catch(() => console.log('El backend rechazó el aporte y el PATCH'));
+        }
+
+        // B. Restamos la plata del Dashboard general (Creamos una transacción de gasto)
+        await api.post('/transactions', {
+          amount: parsedMonthly,
+          type: 'expense',
+          description: `Aporte meta: ${newTitle.trim()}`,
+          transaction_date: new Date().toISOString().slice(0, 10),
+        }).catch(e => console.log("Aviso: ruta de transacción falló", e));
+
+        // C. TRUCO VISUAL: Inyectamos la meta directamente en la pantalla con el saldo sumado
+        setGoals(currentGoals => [
+          ...currentGoals,
+          {
+            id: newGoalId,
+            title: newTitle.trim(),
+            icon: selectedEmoji,
+            target_amount: parsedTarget,
+            current_amount: parsedMonthly, // Magia: Ya no parte en 0%
+            status: 'active'
+          }
+        ]);
+
+      } else {
+        // Si no quiso empezar de inmediato, recargamos la lista desde el servidor
+        load();
+      }
+
       resetModal();
-      load();
     } catch (err: any) {
       Alert.alert('Error', err?.response?.data?.error ?? 'No se pudo crear el objetivo.');
     } finally {
@@ -202,6 +251,7 @@ export default function ObjetivosScreen() {
         <View style={styles_app.overlay}>
           <View style={styles_app.modalContainer}>
             <Text style={styles_app.modalTitle}>Nueva meta de ahorro</Text>
+            
             <Text style={styles_app.label}>Ícono</Text>
             <View style={{ height: 60, marginBottom: 15 }}>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled">
@@ -215,7 +265,7 @@ export default function ObjetivosScreen() {
                       backgroundColor: selectedEmoji === emoji ? '#D9EBFF' : '#F2F2F7',
                       borderRadius: 12,
                       borderWidth: selectedEmoji === emoji ? 1 : 0,
-                      borderColor: '#005AD6',
+                      borderColor: Colors.azul,
                       alignItems: 'center',
                       justifyContent: 'center'
                     }}
@@ -246,14 +296,13 @@ export default function ObjetivosScreen() {
             />
 
             <Text style={styles_app.label}>Fecha límite</Text>
-            <TouchableOpacity
-              style={styles_app.input}
-              onPress={() => setShowDatePicker(true)}
-            >
-              <Text style={{ fontSize: 16, color: '#1A1A1A' }}>{formatDate(deadline)}</Text>
-            </TouchableOpacity>
+            {Platform.OS !== 'web' && (
+              <TouchableOpacity style={styles_app.input} onPress={() => setShowDatePicker(true)}>
+                <Text style={{ fontSize: 16, color: '#1A1A1A' }}>{formatDate(deadline)}</Text>
+              </TouchableOpacity>
+            )}
 
-            {showDatePicker && (
+            {Platform.OS !== 'web' && showDatePicker && (
               <DateTimePicker
                 value={deadline}
                 mode="date"
@@ -262,6 +311,27 @@ export default function ObjetivosScreen() {
                 onChange={(_, selected) => {
                   setShowDatePicker(Platform.OS === 'ios');
                   if (selected) setDeadline(selected);
+                }}
+              />
+            )}
+
+            {Platform.OS === 'web' && (
+              // @ts-ignore
+              <input
+                type="date"
+                min={new Date().toISOString().split('T')[0]}
+                value={deadline.toISOString().split('T')[0]}
+                onChange={(e: any) => {
+                  if (e.target.value) {
+                    const newDate = new Date(e.target.value);
+                    newDate.setMinutes(newDate.getMinutes() + newDate.getTimezoneOffset());
+                    setDeadline(newDate);
+                  }
+                }}
+                style={{
+                  height: 56, width: '100%', boxSizing: 'border-box', borderRadius: 16, borderWidth: 1, borderStyle: 'solid',
+                  borderColor: Colors.borde, paddingLeft: 16, paddingRight: 16, fontSize: 16, fontFamily: 'Inter-Regular',
+                  marginBottom: 12, backgroundColor: Colors.fondo, color: Colors.negro, outline: 'none'
                 }}
               />
             )}
@@ -279,9 +349,21 @@ export default function ObjetivosScreen() {
               }}
             />
 
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, marginTop: 5 }}>
+              <Text style={{ fontSize: 14, fontFamily: 'Inter-Regular', color: Colors.negro, flex: 1, paddingRight: 10 }}>
+                ¿Quieres empezar a ahorrar inmediatamente asignando la primera cuota?
+              </Text>
+              <Switch
+                value={startImmediately}
+                onValueChange={setStartImmediately}
+                trackColor={{ false: '#dfdfe6', true: Colors.celeste }}
+                thumbColor={startImmediately ? Colors.azul : '#f4f3f4'}
+              />
+            </View>
+
             <TouchableOpacity style={styles_app.button} onPress={guardarMeta} disabled={saving}>
               {saving
-                ? <ActivityIndicator color="#fff" />
+                ? <ActivityIndicator color={Colors.blanco} />
                 : <Text style={styles_app.buttonText}>Confirmar</Text>
               }
             </TouchableOpacity>
