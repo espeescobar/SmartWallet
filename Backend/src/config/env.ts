@@ -37,7 +37,12 @@ export const env = {
   // ── CORS ──────────────────────────────────────────────────────────
   CORS_ORIGIN: get('CORS_ORIGIN', '*'),
 
-  // ── Chatbot ───────────────────────────────────────────────────────
-  // Opcional: solo requerido cuando el módulo de chat esté activo
-  OPENAI_API_KEY: optional('OPENAI_API_KEY'),
+  // ── Chatbot / LLM ─────────────────────────────────────────────────
+  // Capa agnóstica de proveedor. Por defecto Groq (gratis, API compatible
+  // con OpenAI). Si no hay LLM_API_KEY, el chat responde con un fallback.
+  // Ver docs/chatbot-arquitectura.md (sección 5).
+  LLM_PROVIDER: get('LLM_PROVIDER', 'groq'),
+  LLM_API_KEY:  optional('LLM_API_KEY') ?? optional('GROQ_API_KEY') ?? optional('OPENAI_API_KEY'),
+  LLM_MODEL:    get('LLM_MODEL',    'llama-3.3-70b-versatile'),
+  LLM_BASE_URL: get('LLM_BASE_URL', 'https://api.groq.com/openai/v1'),
 } as const;

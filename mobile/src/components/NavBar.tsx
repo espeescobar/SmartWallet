@@ -1,10 +1,11 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Image, Text } from 'react-native';
+import { Image, Text, View } from 'react-native';
 import HomeScreen from '../pages/HomeScreen';
 import DashboardScreen from '../pages/DashboardScreen';
 import ObjetivosScreen from '../pages/ObjetivosScreen';
 import AprendeScreen from '../pages/AprendeScreen';
+import ChatFab from './ChatFab';
 import { Colors, Typography } from '../styles/App.styles';
 import { MainTabParamList } from '../navigation/types';
 
@@ -12,6 +13,7 @@ const Tab = createBottomTabNavigator<MainTabParamList>();
 
 export default function NavBar() {
   return (
+    <View style={{ flex: 1 }}>
     <Tab.Navigator
       id="MainTabs"
       screenOptions={({ route }) => ({
@@ -66,5 +68,7 @@ export default function NavBar() {
       <Tab.Screen name="Analíticas" component={DashboardScreen} />
       <Tab.Screen name="Aprende" component={AprendeScreen} />
     </Tab.Navigator>
+    <ChatFab />
+    </View>
   );
 }

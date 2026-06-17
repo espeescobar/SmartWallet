@@ -1,13 +1,14 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// En Expo web/simulador el backend corre en localhost.
-// Si usas dispositivo físico o emulador Android, cambia a la IP de tu máquina.
-const BASE_URL = 'http://localhost:3000/api/v1';
+// URL del backend. Por defecto localhost (web/simulador).
+// Para celular físico se define en tiempo de ejecución con la variable
+// EXPO_PUBLIC_API_URL (ver instrucciones), sin tocar el código.
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000/api/v1';
 
 export const api = axios.create({
   baseURL: BASE_URL,
-  timeout: 10000,
+  timeout: 30000, // el chatbot llama a un LLM; damos margen para respuestas lentas
   headers: { 'Content-Type': 'application/json' },
 });
 

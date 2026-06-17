@@ -1,6 +1,17 @@
 import { chatRepository } from '../repositories/chatRepository';
+import { chatContextService } from './chatContextService';
+import { SYSTEM_PROMPT } from './prompts';
+import { generateReply, isLLMConfigured, LLMMessage } from './llm/llmService';
 import { AppError } from '../middlewares/errorHandler';
 import { ChatSession, ChatMessage } from '../models/types';
+
+// Cuántos mensajes del historial se envían al LLM (control de tokens/costos).
+const HISTORY_LIMIT = 12;
+
+const FALLBACK_REPLY =
+  'Por ahora no puedo responder (el asistente no está disponible). ' +
+  'Intenta de nuevo en un momento. Mientras tanto, recuerda la regla 50/30/20: ' +
+  '50% necesidades, 30% gustos y 20% ahorro.';
 
 export const chatService = {
 
@@ -31,14 +42,50 @@ export const chatService = {
       await chatRepository.updateSessionTitle(sessionId, title);
     }
 
-    // TODO: integrar LLM (Claude API) para generar la respuesta
-    // Por ahora devuelve un placeholder
-    const reply = await chatRepository.addMessage(
+    const replyText = await this.generateAssistantReply(sessionId, userId);
+
+    return chatRepository.addMessage(
       sessionId,
       'assistant',
-      'Pronto estaré conectado a un modelo de lenguaje para responder tus preguntas financieras.',
+      replyText.content,
+      replyText.tokensUsed ?? undefined,
     );
+  },
 
-    return reply;
+  /** Construye el contexto + historial y llama al LLM. Devuelve fallback si falla. */
+  async generateAssistantReply(
+    sessionId: string,
+    userId: string,
+  ): Promise<{ content: string; tokensUsed: number | null }> {
+    if (!isLLMConfigured()) {
+      return { content: FALLBACK_REPLY, tokensUsed: null };
+    }
+
+    try {
+      // Prompt de sistema + contexto financiero agregado (estrategia híbrida)
+      const context = await chatContextService.buildContext(userId);
+      const systemContent = context
+        ? `${SYSTEM_PROMPT}\n\n${context}`
+        : SYSTEM_PROMPT;
+
+      // Historial reciente (ya incluye el mensaje del usuario recién guardado)
+      const history = await chatRepository.findMessages(sessionId);
+      const recent = history.slice(-HISTORY_LIMIT);
+
+      const messages: LLMMessage[] = [
+        { role: 'system', content: systemContent },
+        ...recent.map((m) => ({
+          role: m.role === 'system' ? ('assistant' as const) : m.role,
+          content: m.content,
+        })),
+      ];
+
+      const reply = await generateReply(messages);
+      if (!reply.content) return { content: FALLBACK_REPLY, tokensUsed: null };
+      return reply;
+    } catch (err) {
+      console.error('[chatService] Error generando respuesta del LLM:', err);
+      return { content: FALLBACK_REPLY, tokensUsed: null };
+    }
   },
 };
