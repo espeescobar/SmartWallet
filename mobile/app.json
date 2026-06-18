@@ -27,7 +27,14 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-font"
+      "expo-font",
+      "@react-native-community/datetimepicker",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "SmartWallet necesita acceso a tus fotos para tu foto de perfil."
+        }
+      ]
     ]
   }
 }

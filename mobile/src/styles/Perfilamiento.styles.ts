@@ -1,0 +1,126 @@
+import { StyleSheet } from 'react-native';
+import { Colors, Typography } from './App.styles';
+
+export const styles = StyleSheet.create({
+  progressContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 24,
+    marginTop: 8,
+  },
+  progressDot: {
+    flex: 1,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: Colors.borde,
+  },
+  progressDotActive: {
+    backgroundColor: Colors.azul,
+  },
+  stepTitle: {
+    fontSize: 22,
+    fontFamily: Typography.main,
+    fontWeight: '700',
+    color: Colors.negro,
+    marginBottom: 8,
+  },
+  stepDescription: {
+    fontSize: 15,
+    fontFamily: Typography.main,
+    color: Colors.textoSuave,
+    marginBottom: 24,
+    lineHeight: 22,
+  },
+  errorText: {
+    color: Colors.error,
+    fontSize: 14,
+    fontFamily: Typography.main,
+    marginBottom: 8,
+    marginTop: -4,
+  },
+  skipButton: {
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  skipText: {
+    color: Colors.textoSuave,
+    fontFamily: Typography.main,
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  warningBanner: {
+    backgroundColor: '#FFF3E0',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#FFE0B2',
+  },
+  warningText: {
+    color: '#FF3D71',
+    fontFamily: Typography.main,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  editableRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  categoryLabel: {
+    fontSize: 16,
+    fontFamily: Typography.main,
+    fontWeight: '600',
+    color: Colors.negro,
+    flex: 1,
+  },
+  amountInput: {
+    backgroundColor: Colors.fondo,
+    height: 48,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.borde,
+    paddingHorizontal: 12,
+    fontSize: 16,
+    fontFamily: Typography.main,
+    color: Colors.negro,
+    width: 130,
+    textAlign: 'right',
+  },
+  metaInfo: {
+    fontSize: 13,
+    fontFamily: Typography.main,
+    color: Colors.textoSuave,
+    marginTop: 4,
+  },
+  deleteButton: {
+    marginLeft: 8,
+    padding: 4,
+  },
+  deleteText: {
+    color: Colors.error,
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  totalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingTop: 16,
+    marginTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: Colors.borde,
+  },
+  totalLabel: {
+    fontSize: 16,
+    fontFamily: Typography.main,
+    fontWeight: '700',
+    color: Colors.negro,
+  },
+  totalAmount: {
+    fontSize: 16,
+    fontFamily: Typography.main,
+    fontWeight: '800',
+    color: Colors.azul,
+  },
+});

@@ -1,35 +1,17 @@
-import express from 'express';
-import cors from 'cors';
+import app from './src/server';
+import { env } from './src/config/env';
+import { testConnection } from './src/config/database';
 
-const app = express();
-const port = 3000;
+async function bootstrap(): Promise<void> {
+  await testConnection();
 
-// Configuración básica de seguridad y formato
-app.use(cors());
-app.use(express.json());
+  app.listen(env.PORT, () => {
+    console.log(`SmartWallet API corriendo en http://localhost:${env.PORT}/api/v1`);
+    console.log(`Entorno: ${env.NODE_ENV}`);
+  });
+}
 
-// Base de datos en memoria (Mocking temporal)
-const gastos: any[] = [];
-
-// Ruta de prueba para ver si el servidor vive
-app.get('/', (req, res) => {
-  res.send('¡Servidor de SmartWallet corriendo perfecto!');
-});
-
-// Ruta para guardar un gasto
-app.post('/gastos', (req, res) => {
-  const nuevoGasto = req.body;
-  gastos.push(nuevoGasto);
-  console.log("Nuevo gasto recibido:", nuevoGasto);
-  res.status(201).json({ mensaje: 'Gasto guardado en local', gasto: nuevoGasto });
-});
-
-// Ruta para ver todos los gastos
-app.get('/gastos', (req, res) => {
-  res.json(gastos);
-});
-
-// Encender el motor
-app.listen(port, () => {
-  console.log(` Servidor de SmartWallet corriendo en http://localhost:${port}`);
+bootstrap().catch((err: unknown) => {
+  console.error('Error fatal al iniciar el servidor:', err);
+  process.exit(1);
 });

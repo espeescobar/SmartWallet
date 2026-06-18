@@ -24,7 +24,7 @@ export const styles_app = StyleSheet.create({
     },
     container: { 
         flex: 1, 
-        paddingHorizontal: 24 
+        paddingHorizontal: 15
     },
     screenTitle: { 
         fontSize: 28, 
@@ -70,7 +70,7 @@ export const styles_app = StyleSheet.create({
         marginBottom: 12
     },
 
-    // botones principales
+    // botones 
     buttonText: { 
         color: Colors.blanco, 
         fontFamily: Typography.main,
@@ -85,6 +85,33 @@ export const styles_app = StyleSheet.create({
         alignItems: 'center',
         marginTop: 8
     },
+
+    buttonText_secundario: { 
+        color: Colors.azul, 
+        fontFamily: Typography.main,
+        fontWeight: '700', 
+        fontSize: 16 
+    },
+    button_secundario: { 
+        backgroundColor: Colors.celeste, 
+        height: 56, 
+        borderRadius: 16, 
+        justifyContent: 'center', 
+        alignItems: 'center',
+        marginTop: 8
+    },
+
+    cancelButton: {
+        marginTop: 12,
+        alignItems: 'center',
+    },
+    cancelText: {
+        color: Colors.textoSuave,
+        fontFamily: Typography.main,
+        fontSize: 16,
+    },
+    
+
 
     // formularios
     input: { 
@@ -105,7 +132,27 @@ export const styles_app = StyleSheet.create({
         color: Colors.textoSuave,
         marginBottom: 8,
         fontWeight: '600',
-    }
+    },
+
+    overlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.4)',
+        justifyContent: 'flex-end',
+    },
+    modalContainer: {
+        backgroundColor: Colors.blanco,
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        padding: 24,
+        paddingBottom: 40,
+    },
+    modalTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        marginBottom: 16,
+        color: Colors.negro,
+        fontFamily: Typography.main,
+    },
 });
 
 export const Shadows = {

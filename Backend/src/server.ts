@@ -1,21 +1,29 @@
-// SmartWallet/Backend/src/server.ts
 import express from 'express';
 import cors from 'cors';
-import bodyParser from 'body-parser';
-import { Expense } from '../../shared/types';
+import helmet from 'helmet';
+import { env } from './config/env';
+import { requestLogger } from './middlewares/requestLogger';
+import { notFound } from './middlewares/notFound';
+import { errorHandler } from './middlewares/errorHandler';
+import apiRoutes from './routes';
 
 const app = express();
-const PORT = 5000;
 
-app.use(cors());
-app.use(bodyParser.json());
+// ── Seguridad y parsing ───────────────────────────────────────────────────────
+app.use(helmet());
+app.use(cors({ origin: env.CORS_ORIGIN }));
+app.use(express.json());
 
-app.post('/api/expenses', (req, res) => {
-    const expense: Expense = req.body;
-    console.log('Gasto recibido:', expense);
-    res.status(201).send(expense);
-});
+// ── Logging ──────────────────────────────────────────────────────────────────
+if (env.NODE_ENV !== 'test') {
+  app.use(requestLogger);
+}
 
-app.listen(PORT, () => {
-    console.log(`Servidor escuchando en http://localhost:${PORT}`);
-});
+// ── Rutas ────────────────────────────────────────────────────────────────────
+app.use('/api/v1', apiRoutes);
+
+// ── Fallbacks (deben ir al final) ────────────────────────────────────────────
+app.use(notFound);
+app.use(errorHandler);
+
+export default app;
