@@ -272,14 +272,19 @@ async function runSeed() {
     }
     console.log(`✅ ${expenseCount} gastos generados (${MONTHS_OF_HISTORY} meses + mes actual)`);
 
-    try {
-      await client.query(`REFRESH MATERIALIZED VIEW mv_monthly_expense_summary;`);
-    } catch (e) {
-      console.warn('⚠️  No se pudo refrescar mv_monthly_expense_summary:', e);
-    }
-
     await client.query('COMMIT');
     console.log('🚀 Seed completado exitosamente. La base de datos está lista para la presentación.');
+
+    // Refrescar la vista materializada FUERA de la transacción: si falla
+    // (p.ej. la vista no existe en una BD desactualizada) NO debe revertir el
+    // seed. Un error dentro de la transacción la aborta y convierte el COMMIT
+    // en ROLLBACK. Además es opcional: el dashboard consulta las tablas directo.
+    try {
+      await client.query(`REFRESH MATERIALIZED VIEW mv_monthly_expense_summary;`);
+      console.log('✅ Vista materializada actualizada');
+    } catch (e) {
+      console.warn('⚠️  No se pudo refrescar mv_monthly_expense_summary (opcional, el dashboard no la usa):', (e as Error).message);
+    }
 
   } catch (error) {
     await client.query('ROLLBACK');
