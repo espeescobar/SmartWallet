@@ -4,8 +4,8 @@ import { AuthRequest } from '../middlewares/authenticate';
 
 export async function getSummary(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const month = req.query.month as string | undefined;
-    const data  = await dashboardService.getSummary((req as AuthRequest).userId, month);
+    const { month, from, to } = req.query as { month?: string; from?: string; to?: string };
+    const data  = await dashboardService.getSummary((req as AuthRequest).userId, { month, from, to });
     res.json(data);
   } catch (err) { 
     next(err); 

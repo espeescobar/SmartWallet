@@ -3,35 +3,55 @@ import { DashboardSummary, CategorySummary } from '../models/types';
 
 export const dashboardService = {
 
-  async getSummary(userId: string, month?: string): Promise<DashboardSummary> {
-    // Default: mes actual en formato "YYYY-MM"
-    const targetMonth = month ?? new Date().toISOString().slice(0, 7);
-    const monthDate = `${targetMonth}-01`;
+  async getSummary(
+    userId: string,
+    opts: { month?: string; from?: string; to?: string } = {},
+  ): Promise<DashboardSummary> {
+    // Rango de fechas: si vienen from/to (filtros de la vista: semana, mes,
+    // trimestre, año) se respetan; si no, se cae al mes indicado (o el actual).
+    let from: string;
+    let to: string;
+    if (opts.from && opts.to) {
+      from = opts.from;
+      to   = opts.to;
+    } else {
+      const targetMonth = opts.month ?? new Date().toISOString().slice(0, 7);
+      const [y, m] = targetMonth.split('-').map(Number);
+      from = `${targetMonth}-01`;
+      to   = new Date(y, m, 0).toISOString().slice(0, 10); // último día del mes
+    }
 
-    // Totales de ingresos y egresos del mes
+    // Totales de ingresos y egresos en el rango
     const { rows: totals } = await pool.query<{ type: string; total: string }>(
       `SELECT type, COALESCE(SUM(amount), 0)::text AS total
        FROM transactions
        WHERE user_id = $1
-         AND TO_CHAR(transaction_date, 'YYYY-MM') = $2
+         AND transaction_date BETWEEN $2 AND $3
          AND deleted_at IS NULL
        GROUP BY type`,
-      [userId, targetMonth],
+      [userId, from, to],
     );
 
     const total_income   = parseInt(totals.find(r => r.type === 'income')?.total  ?? '0', 10);
     const total_expenses = parseInt(totals.find(r => r.type === 'expense')?.total ?? '0', 10);
 
-    // Gastos por categoría + presupuesto asignado + historial de transacciones (TODO EN UNO)
+    // Gastos por categoría + presupuesto (suma de los meses incluidos en el
+    // rango, vía subconsulta para no multiplicar el SUM de transacciones) +
+    // historial de transacciones del rango.
     const categoriesQuery = `
-      SELECT 
+      SELECT
         c.id AS category_id,
         c.name AS category_name,
         c.icon AS category_icon,
         c.color AS category_color,
         COALESCE(SUM(t.amount), 0)::int AS total_amount,
         COUNT(t.id)::int AS transaction_count,
-        mb.amount AS budget_amount,
+        (SELECT COALESCE(SUM(mb.amount), 0)::int
+           FROM monthly_budgets mb
+          WHERE mb.category_id = c.id
+            AND mb.user_id = $1
+            AND mb.month BETWEEN DATE_TRUNC('month', $2::date) AND DATE_TRUNC('month', $3::date)
+        ) AS budget_amount,
         COALESCE(
           json_agg(
             json_build_object(
@@ -39,40 +59,37 @@ export const dashboardService = {
               'description', t.description,
               'amount', t.amount,
               'date', t.transaction_date
-            )
+            ) ORDER BY t.transaction_date DESC
           ) FILTER (WHERE t.id IS NOT NULL), '[]'
         ) AS transactions
       FROM categories c
-      LEFT JOIN transactions t ON c.id = t.category_id 
-        AND t.user_id = $1 
-        AND TO_CHAR(t.transaction_date, 'YYYY-MM') = $2
+      LEFT JOIN transactions t ON c.id = t.category_id
+        AND t.user_id = $1
+        AND t.transaction_date BETWEEN $2 AND $3
         AND t.deleted_at IS NULL
         AND t.type = 'expense'
-      LEFT JOIN monthly_budgets mb ON mb.category_id = c.id
-        AND mb.user_id = $1
-        AND mb.month = $3::date
       WHERE c.user_id = $1 AND c.type = 'expense'
-      GROUP BY c.id, c.name, c.icon, c.color, mb.amount
+      GROUP BY c.id, c.name, c.icon, c.color
       HAVING COUNT(t.id) > 0
       ORDER BY total_amount DESC;
     `;
 
-    
-    const { rows: categoriesRows } = await pool.query(categoriesQuery, [userId, targetMonth, monthDate]);
+
+    const { rows: categoriesRows } = await pool.query(categoriesQuery, [userId, from, to]);
 
     const categoriesFormatted = categoriesRows.map(cat => ({
       ...cat,
-      category_color: cat.category_color || '#005AD6', 
+      category_color: cat.category_color || '#005AD6',
     }));
 
     return {
-      month:  targetMonth,
+      month:  opts.month ?? from.slice(0, 7),
       total_income,
       total_expenses,
       balance: total_income - total_expenses,
       categories: categoriesFormatted // Eliminado el "cats" duplicado
     };
-  }, 
+  },
   async getCategories(userId: string, type?: string) {
     const params: any[] = [userId];
     let query = `
